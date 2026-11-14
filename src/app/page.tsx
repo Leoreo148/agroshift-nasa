@@ -750,9 +750,16 @@ export default function HomePage() {
                       </span>{" "}
                       {crop.tradeOff}
                     </p>
-                    <p className="pt-1 text-[10px] text-slate-500">
-                      {t.sciBaseLabel}: {crop.reference}
-                    </p>
+                    <div className="pt-1.5 text-[10px] leading-relaxed text-slate-400">
+                      <span className="font-semibold text-slate-300">
+                        {t.sciBaseLabel}:
+                      </span>
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-slate-500">
+                        {crop.citations.map((cite, cIdx) => (
+                          <li key={cIdx}>{cite}</li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               );
@@ -760,6 +767,20 @@ export default function HomePage() {
           </div>
         )}
       </section>
+
+      <footer className="rounded-3xl border border-slate-800/80 bg-slate-900/40 p-5 sm:p-6">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+          {t.methodTitle}
+        </h3>
+        <ul className="mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-400">
+          {t.methodItems.map((item, idx) => (
+            <li key={idx}>{item}</li>
+          ))}
+        </ul>
+        <p className="mt-4 border-t border-slate-800/80 pt-3 text-xs font-medium text-slate-300">
+          {t.farmerDisclaimer}
+        </p>
+      </footer>
     </main>
   );
 }

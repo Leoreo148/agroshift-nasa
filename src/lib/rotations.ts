@@ -24,6 +24,7 @@ export interface CropOption {
   /** Factor C aproximado en RUSLE (menor = protege más contra erosión, suelo desnudo = 1.0) */
   rusleCFactor: number;
   reference: string;
+  citations: string[];
   i18n: Record<Lang, CropText>;
 }
 
@@ -35,6 +36,7 @@ export interface EvaluatedCrop {
   pestBreakBenefit: string;
   tradeOff: string;
   reference: string;
+  citations: string[];
   matchScore: number;
   waterSavingScore: number;
   climateFitScore: number;
@@ -51,7 +53,13 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [10, 20, 35, 42],
     bnfKgNHa: [40, 100],
     rusleCFactor: 0.24,
-    reference: "FAO EcoCrop · FAO-56 · BNF Cowpea (Africa / Tropics)",
+    reference: "Ehlers & Hall (1997) · Herridge et al. (2008) · FAO-56 · FAO EcoCrop #2153",
+    citations: [
+      "Ehlers, J. D., & Hall, A. E. (1997). Cowpea (Vigna unguiculata L. Walp.). Field Crops Research, 53(1–3), 187–204.",
+      "Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008). Global inputs of biological nitrogen fixation in agricultural systems. Plant and Soil, 311, 1–18.",
+      "Allen, R. G. et al. (1998). Crop evapotranspiration (FAO Irrigation & Drainage Paper No. 56).",
+      "FAO EcoCrop Database (Code 2153: T_opt 20–35 °C, T_max 42 °C).",
+    ],
     i18n: {
       en: {
         name: "Cowpea",
@@ -87,7 +95,12 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [12, 25, 35, 44],
     bnfKgNHa: [0, 0],
     rusleCFactor: 0.30,
-    reference: "FAO EcoCrop · FAO-56 (Semi-arid C4 cereal)",
+    reference: "Vadez et al. (2012) · FAO-56 · FAO EcoCrop",
+    citations: [
+      "Vadez, V., Hash, C. T., Bidinger, F. R., & Kholova, J. (2012). Phenotyping pearl millet for adaptation to drought. Frontiers in Physiology, 3, 386.",
+      "Allen, R. G. et al. (1998). Crop evapotranspiration (FAO Paper No. 56, 350–500 mm/cycle).",
+      "FAO EcoCrop Database (Pennisetum glaucum: T_opt 25–35 °C, T_max 44 °C).",
+    ],
     i18n: {
       en: {
         name: "Pearl Millet",
@@ -123,7 +136,12 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [12, 20, 34, 42],
     bnfKgNHa: [0, 0],
     rusleCFactor: 0.35,
-    reference: "FAO EcoCrop · FAO-56 (Allen et al., 1998)",
+    reference: "Allen et al. (1998) FAO-56 · Renard et al. (1997) RUSLE · FAO EcoCrop",
+    citations: [
+      "Allen, R. G., Pereira, L. S., Raes, D., & Smith, M. (1998). FAO Irrigation & Drainage Paper No. 56 (450–650 mm/cycle).",
+      "Renard, K. G. et al. (1997). Predicting Soil Erosion by Water (USDA-ARS Agriculture Handbook No. 703, RUSLE C ≈ 0.35).",
+      "FAO EcoCrop Database (Sorghum bicolor: T_opt 20–34 °C, T_max 42 °C).",
+    ],
     i18n: {
       en: {
         name: "Sorghum",
@@ -159,7 +177,12 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [5, 15, 25, 36],
     bnfKgNHa: [30, 80],
     rusleCFactor: 0.30,
-    reference: "FAO EcoCrop · FAO-56 (Cool/residual-moisture legume)",
+    reference: "Herridge et al. (2008) · FAO-56 · FAO EcoCrop #2479",
+    citations: [
+      "Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008). Global inputs of biological nitrogen fixation in agricultural systems. Plant and Soil, 311, 1–18 (30–80 kg N/ha).",
+      "Allen, R. G. et al. (1998). FAO Irrigation & Drainage Paper No. 56 (300–500 mm/cycle).",
+      "FAO EcoCrop Database (Code 2479: T_opt 15–25 °C, residual moisture pulse).",
+    ],
     i18n: {
       en: {
         name: "Chickpea",
@@ -195,7 +218,12 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [-3, 15, 25, 34],
     bnfKgNHa: [0, 0],
     rusleCFactor: 0.30,
-    reference: "FAO EcoCrop · FAO-56 (Allen et al., 1998)",
+    reference: "Zurita-Silva et al. (2015) FAO/CIRAD · FAO-56 · FAO EcoCrop",
+    citations: [
+      "Zurita-Silva, A., Jacobsen, S.-E., Razzaghi, F., Alvarez-Flores, R., Ruiz, K., Morales, A., & Silva, H. (2015). Quinoa drought responses and adaptation. In State of the Art Report of Quinoa (pp. 157–171), FAO & CIRAD.",
+      "Allen, R. G. et al. (1998). FAO Irrigation & Drainage Paper No. 56 (300–500 mm/cycle).",
+      "FAO EcoCrop Database (Chenopodium quinoa: T_abs_min -3 °C, T_opt 15–25 °C).",
+    ],
     i18n: {
       en: {
         name: "Quinoa",
@@ -231,7 +259,12 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [-3, 12, 24, 31],
     bnfKgNHa: [50, 150],
     rusleCFactor: 0.12,
-    reference: "FAO EcoCrop · RUSLE (Renard et al.) · BNF Vicia sativa",
+    reference: "Renard et al. (1997) RUSLE · Herridge et al. (2008) · FAO EcoCrop",
+    citations: [
+      "Renard, K. G., Foster, G. R., Weesies, G. A., McCool, D. K., & Yoder, D. C. (1997). USDA-ARS Agriculture Handbook No. 703 (RUSLE C ≈ 0.12 for dense cover).",
+      "Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008). Plant and Soil, 311, 1–18 (Vicia sativa BNF 50–150 kg N/ha).",
+      "FAO EcoCrop Database (Avena sativa / Vicia sativa: T_abs_min -3 °C, T_opt 12–24 °C).",
+    ],
     i18n: {
       en: {
         name: "Oats + Vetch (Cover)",
@@ -267,7 +300,12 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [10, 15, 27, 35],
     bnfKgNHa: [10, 60],
     rusleCFactor: 0.32,
-    reference: "FAO EcoCrop · FAO-56 · BNF Meta-analysis P. vulgaris",
+    reference: "Beebe et al. (2013) · Herridge et al. (2008) · FAO-56",
+    citations: [
+      "Beebe, S. E., Rao, I. M., Blair, M. W., & Acosta-Gallegos, J. A. (2013). Phenotyping common beans for adaptation to drought. Frontiers in Physiology, 4, 35.",
+      "Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008). Plant and Soil, 311, 1–18 (Phaseolus vulgaris BNF 10–60 kg N/ha).",
+      "Allen, R. G. et al. (1998). FAO Irrigation & Drainage Paper No. 56 (350–500 mm/cycle).",
+    ],
     i18n: {
       en: {
         name: "Common Bean",
@@ -303,7 +341,12 @@ const CROP_CATALOG: CropOption[] = [
     ecoCropTempC: [10, 18, 32, 40],
     bnfKgNHa: [0, 0],
     rusleCFactor: 0.40,
-    reference: "FAO EcoCrop · FAO-56 · RUSLE C-factor",
+    reference: "Lobell et al. (2011) Science · FAO-56 · Renard et al. (1997) RUSLE",
+    citations: [
+      "Lobell, D. B., Schlenker, W., & Costa-Roberts, J. (2011). Climate trends and global crop production since 1980. Science, 333(6042), 616–620.",
+      "Allen, R. G. et al. (1998). FAO Irrigation & Drainage Paper No. 56 (500–800 mm/cycle).",
+      "Renard, K. G. et al. (1997). USDA-ARS Agriculture Handbook No. 703 (RUSLE C ≈ 0.40).",
+    ],
     i18n: {
       en: {
         name: "Maize",
@@ -478,6 +521,7 @@ export function evaluateCropRotations(
       pestBreakBenefit: txt.pestBreakBenefit,
       tradeOff: txt.tradeOff,
       reference: crop.reference,
+      citations: crop.citations,
       matchScore,
       waterSavingScore,
       climateFitScore,

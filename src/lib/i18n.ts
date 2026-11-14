@@ -69,6 +69,9 @@ export interface Translations {
     highland: string;
     temperate: string;
   };
+  methodTitle: string;
+  methodItems: string[];
+  farmerDisclaimer: string;
 }
 
 export const T: Record<Lang, Translations> = {
@@ -135,6 +138,15 @@ export const T: Record<Lang, Translations> = {
       highland: "Highland / Cool Mountain",
       temperate: "Temperate / Continental",
     },
+    methodTitle: "Formulas & Peer-Reviewed Basis (RELASPO · Penman 1948 · FAO-56 · RUSLE)",
+    methodItems: [
+      "Reference Evaporation (Eo): Penman, H. L. (1948), Proc. R. Soc. Lond. A 193, 120–145; hydrological formulation following Dr. Jorge Pinna Cabrejos (1974), Relaciones Agua–Suelo–Planta (RELASPO).",
+      "Crop Water & Thermal Thresholds: Allen, R. G. et al. (1998), FAO Irrigation & Drainage Paper No. 56; FAO EcoCrop Database.",
+      "Soil Erosion Cover Factor (C): Renard, K. G. et al. (1997), USDA-ARS Agriculture Handbook No. 703 (RUSLE).",
+      "Biological Nitrogen Fixation (BNF): Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008), Plant and Soil, 311, 1–18.",
+    ],
+    farmerDisclaimer:
+      "Decision-support notice: This tool helps identify climate patterns and crop rotation possibilities from open NASA & FAO data, and does not replace the farmer's judgment or local agricultural experience.",
   },
   es: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -199,6 +211,15 @@ export const T: Record<Lang, Translations> = {
       highland: "Sierra / Montaña Fría",
       temperate: "Templado / Continental",
     },
+    methodTitle: "Fórmulas y respaldo científico (RELASPO · Penman 1948 · FAO-56 · RUSLE)",
+    methodItems: [
+      "Evaporación de referencia (Eo): Penman, H. L. (1948), Proc. R. Soc. Lond. A 193, 120–145; formulación hidrológica del libro RELASPO — Relaciones Agua–Suelo–Planta (Dr. Jorge Pinna Cabrejos, 1974).",
+      "Requerimiento hídrico y umbrales térmicos: Allen, R. G. et al. (1998), FAO Riego y Drenaje N.° 56; Base de datos FAO EcoCrop.",
+      "Factor C de cobertura contra erosión: Renard, K. G. et al. (1997), USDA-ARS Agriculture Handbook No. 703 (RUSLE).",
+      "Fijación biológica de nitrógeno (BNF): Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008), Plant and Soil, 311, 1–18.",
+    ],
+    farmerDisclaimer:
+      "Herramienta de apoyo: Ayuda a identificar patrones climáticos y posibilidades de rotación con datos abiertos de NASA y FAO, pero no sustituye el criterio del agricultor ni la experiencia agrícola local.",
   },
   fr: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -263,6 +284,15 @@ export const T: Record<Lang, Translations> = {
       highland: "Haute Altitude / Montagne Fraîche",
       temperate: "Tempéré / Continental",
     },
+    methodTitle: "Formules & base scientifique (RELASPO · Penman 1948 · FAO-56 · RUSLE)",
+    methodItems: [
+      "Évaporation de référence (Eo) : Penman, H. L. (1948), Proc. R. Soc. Lond. A 193, 120–145 ; formulation hydrologique RELASPO — Relaciones Agua–Suelo–Planta (Dr. Jorge Pinna Cabrejos, 1974).",
+      "Besoins en eau et seuils thermiques : Allen, R. G. et al. (1998), Bulletin FAO d'irrigation et de drainage n° 56 ; base FAO EcoCrop.",
+      "Facteur C d'érosion hydrique : Renard, K. G. et al. (1997), USDA-ARS Agriculture Handbook No. 703 (RUSLE).",
+      "Fixation biologique de l'azote (BNF) : Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008), Plant and Soil, 311, 1–18.",
+    ],
+    farmerDisclaimer:
+      "Outil d'aide à la décision : cette application aide à identifier des tendances climatiques et des possibilités de rotation via les données ouvertes NASA/FAO, sans remplacer le jugement de l'agriculteur ni l'expérience locale.",
   },
   pt: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -327,5 +357,14 @@ export const T: Record<Lang, Translations> = {
       highland: "Altitude / Montanha Fria",
       temperate: "Temperado / Continental",
     },
+    methodTitle: "Fórmulas e base científica (RELASPO · Penman 1948 · FAO-56 · RUSLE)",
+    methodItems: [
+      "Evaporação de referência (Eo): Penman, H. L. (1948), Proc. R. Soc. Lond. A 193, 120–145; formulação hidrológica do livro RELASPO — Relaciones Agua–Suelo–Planta (Dr. Jorge Pinna Cabrejos, 1974).",
+      "Demanda hídrica e limites térmicos: Allen, R. G. et al. (1998), Boletim FAO Irrigação e Drenagem n° 56; base FAO EcoCrop.",
+      "Fator C de cobertura e erosão: Renard, K. G. et al. (1997), USDA-ARS Agriculture Handbook No. 703 (RUSLE).",
+      "Fixação biológica de nitrogênio (BNF): Herridge, D. F., Peoples, M. B., & Boddey, R. M. (2008), Plant and Soil, 311, 1–18.",
+    ],
+    farmerDisclaimer:
+      "Ferramenta de apoio: ajuda a identificar padrões climáticos e possibilidades de rotação com dados abertos da NASA e FAO, sem substituir o critério do agricultor nem a experiência agrícola local.",
   },
 };

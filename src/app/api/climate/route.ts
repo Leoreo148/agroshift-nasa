@@ -116,7 +116,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Cálculo de Eo Penman (1948) en mm/día usando variables NASA POWER (Rs en MJ/m2/día)
+    // Cálculo de Eo Penman (1948) en mm/día según formulación hidrológica RELASPO (Pinna Cabrejos, 1974)
+    // Ref: Penman, H. L. (1948) Proc. R. Soc. Lond. A 193, 120-145; Pinna Cabrejos, J. (1974) RELASPO.
     let eoMmDay: number | null = null;
     if (tempAvg !== null && humidityAvg !== null && solarAvg !== null) {
       const u2 = windAvg ?? 2.0;
