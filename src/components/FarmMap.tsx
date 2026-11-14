@@ -9,6 +9,9 @@ interface FarmMapProps {
   lon: number;
   label: string;
   onSelectCoords: (lat: number, lon: number) => void;
+  satelliteLabel?: string;
+  mapLabel?: string;
+  hintText?: string;
 }
 
 export default function FarmMap({
@@ -16,6 +19,9 @@ export default function FarmMap({
   lon,
   label,
   onSelectCoords,
+  satelliteLabel = "Satellite",
+  mapLabel = "Map",
+  hintText = "Click anywhere on the map to move your field",
 }: FarmMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -114,10 +120,10 @@ export default function FarmMap({
         className="absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/85 px-2.5 py-1.5 text-xs font-medium text-slate-200 backdrop-blur transition hover:border-emerald-500/60 hover:text-white"
       >
         <Layers className="h-3.5 w-3.5 text-emerald-400" />
-        {satellite ? "Satélite" : "Mapa"}
+        {satellite ? satelliteLabel : mapLabel}
       </button>
       <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-slate-800 bg-slate-950/80 px-2.5 py-1 text-[11px] text-slate-300 backdrop-blur">
-        Haz clic en cualquier punto del mapa para mover tu parcela
+        {hintText}
       </div>
     </div>
   );

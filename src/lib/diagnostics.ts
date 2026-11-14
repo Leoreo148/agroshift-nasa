@@ -1,4 +1,7 @@
+import type { Lang } from "@/lib/i18n";
+
 export type RiskLevel = "good" | "warn" | "alert";
+export type AgroZone = "tropicalArid" | "tropicalHumid" | "highland" | "temperate";
 
 export interface DiagnosticCard {
   id: "water" | "heat" | "health" | "erosion";
@@ -21,10 +24,356 @@ export interface ClimateMetrics {
   eoMmDay: number | null;
 }
 
+export function detectAgroZone(lat: number, climate: ClimateMetrics): AgroZone {
+  const absLat = Math.abs(lat);
+  const elev = climate.elevationM ?? 200;
+  const tAvg = climate.tempAvgC ?? 20;
+  const rain = climate.rain30dMm ?? 20;
+
+  if (elev >= 1800 || (absLat <= 35 && tAvg <= 15.5)) {
+    return "highland";
+  }
+  if (absLat <= 28) {
+    return rain < 60 ? "tropicalArid" : "tropicalHumid";
+  }
+  return "temperate";
+}
+
+const COPY: Record<
+  Lang,
+  {
+    water: Record<RiskLevel, { title: string; status: string; desc: string }>;
+    heat: {
+      title: string;
+      frost: { status: string; desc: string };
+      hot: { status: string; desc: string };
+      warn: { status: string; desc: string };
+      good: { status: string; desc: string };
+    };
+    health: Record<RiskLevel, { title: string; status: string; desc: string }>;
+    erosion: Record<RiskLevel, { title: string; status: string; desc: string }>;
+    headlineOk: string;
+    headlineAlert: (items: string) => string;
+    headlineWarn: (items: string) => string;
+  }
+> = {
+  en: {
+    water: {
+      alert: {
+        title: "Available water",
+        status: "Dry / Deficit",
+        desc: "Very low rainfall over 30 days and dry soil. Prioritize drought-hardy crops or drip irrigation.",
+      },
+      warn: {
+        title: "Available water",
+        status: "Moderate",
+        desc: "Limited moisture. Mulching or rotating with water-efficient crops helps preserve soil water.",
+      },
+      good: {
+        title: "Available water",
+        status: "Good moisture",
+        desc: "Soil moisture and recent rainfall are adequate to establish a new crop cycle.",
+      },
+    },
+    heat: {
+      title: "Temperature extremes",
+      frost: {
+        status: "Frost risk",
+        desc: "Nighttime lows approach freezing. Choose cold-tolerant crops or adjust planting dates.",
+      },
+      hot: {
+        status: "Heat stress",
+        desc: "High daytime peaks accelerate water loss. Sensitive crops can lose yield during flowering.",
+      },
+      warn: {
+        title_unused: "",
+        status: "Moderate stress",
+        desc: "Slightly demanding highs or cool nights. Check cultivar temperature thresholds.",
+      } as { status: string; desc: string },
+      good: {
+        status: "Favorable",
+        desc: "Balanced temperatures for most adapted crops.",
+      },
+    },
+    health: {
+      alert: {
+        title: "Crop environment",
+        status: "Fungal risk",
+        desc: "High humidity and frequent rain favor foliar diseases. Rotation helps break pest cycles.",
+      },
+      warn: {
+        title: "Crop environment",
+        status: "Watch humidity",
+        desc: "High air humidity or low sunlight. Avoid waterlogging and improve canopy airflow.",
+      },
+      good: {
+        title: "Crop environment",
+        status: "Healthy",
+        desc: "Good solar radiation and balanced humidity for clean leaf development.",
+      },
+    },
+    erosion: {
+      alert: {
+        title: "Soil protection",
+        status: "Erosion risk",
+        desc: "Sloped terrain at risk of topsoil loss. Use cover crops or dense roots to anchor soil.",
+      },
+      warn: {
+        title: "Soil protection",
+        status: "Moderate slope",
+        desc: "Keep crop residues or contour strips to slow down rainwater runoff.",
+      },
+      good: {
+        title: "Soil protection",
+        status: "Stable terrain",
+        desc: "Gentle slope with low risk of soil wash-off during rain.",
+      },
+    },
+    headlineOk: "Your field shows generally stable conditions.",
+    headlineAlert: (items) =>
+      `Main attention needed on: ${items}. Smart crop rotation can reduce this risk.`,
+    headlineWarn: (items) =>
+      `Manageable conditions, with caution on: ${items}.`,
+  },
+  es: {
+    water: {
+      alert: {
+        title: "Agua disponible",
+        status: "Escasez / Seco",
+        desc: "Casi no ha llovido en 30 días y el suelo está seco. Prioriza cultivos de bajo consumo o riego eficiente.",
+      },
+      warn: {
+        title: "Agua disponible",
+        status: "Humedad justa",
+        desc: "Lluvia moderada. Conviene usar coberturas o rotar con cultivos resistentes a periodos secos.",
+      },
+      good: {
+        title: "Agua disponible",
+        status: "Buena humedad",
+        desc: "El suelo cuenta con humedad suficiente para establecer un cultivo sin estrés inmediato.",
+      },
+    },
+    heat: {
+      title: "Temperatura extrema",
+      frost: {
+        status: "Riesgo de heladas",
+        desc: "Las mínimas se acercan a 0 °C. Elige cultivos tolerantes al frío o ajusta la fecha de siembra.",
+      },
+      hot: {
+        status: "Calor fuerte",
+        desc: "Máximas altas que aceleran la pérdida de agua. Cultivos sensibles pueden perder rendimiento.",
+      },
+      warn: {
+        status: "Exigencia moderada",
+        desc: "Temperaturas algo exigentes en horas pico o madrugadas frías. Revisa la tolerancia del cultivo.",
+      },
+      good: {
+        status: "Clima favorable",
+        desc: "Temperaturas estables y cómodas para el crecimiento de cultivos adaptados.",
+      },
+    },
+    health: {
+      alert: {
+        title: "Ambiente del cultivo",
+        status: "Riesgo de hongos",
+        desc: "Mucha humedad y lluvia seguida favorecen enfermedades en hojas. Rotar corta el ciclo de plagas.",
+      },
+      warn: {
+        title: "Ambiente del cultivo",
+        status: "Vigilar humedad",
+        desc: "Humedad ambiental alta o poca luz solar. Evita encharcamientos y mejora la ventilación.",
+      },
+      good: {
+        title: "Ambiente del cultivo",
+        status: "Ambiente sano",
+        desc: "Buena radiación solar y humedad equilibrada, condiciones limpias para el follaje.",
+      },
+    },
+    erosion: {
+      alert: {
+        title: "Protección del suelo",
+        status: "Riesgo de erosión",
+        desc: "Terreno inclinado con riesgo de perder capa fértil. Usa coberturas o raíces que fijen el suelo.",
+      },
+      warn: {
+        title: "Protección del suelo",
+        status: "Pendiente moderada",
+        desc: "Conviene mantener rastrojo o cultivos en fajas para evitar arrastre de nutrientes.",
+      },
+      good: {
+        title: "Protección del suelo",
+        status: "Terreno estable",
+        desc: "Relieve prácticamente plano, con bajo riesgo de arrastre de suelo por lluvia.",
+      },
+    },
+    headlineOk: "Tu campo muestra condiciones estables en general.",
+    headlineAlert: (items) =>
+      `Atención principal en: ${items}. Una buena rotación puede reducir este riesgo.`,
+    headlineWarn: (items) =>
+      `Condiciones manejables, con precaución en: ${items}.`,
+  },
+  fr: {
+    water: {
+      alert: {
+        title: "Eau disponible",
+        status: "Sec / Déficit",
+        desc: "Très peu de pluie sur 30 jours et sol sec. Privilégiez des cultures sobres en eau.",
+      },
+      warn: {
+        title: "Eau disponible",
+        status: "Humidité juste",
+        desc: "Pluie modérée. Le paillage ou des cultures tolérantes à la sécheresse protègent l'eau du sol.",
+      },
+      good: {
+        title: "Eau disponible",
+        status: "Bonne humidité",
+        desc: "Le sol dispose d'une humidité suffisante pour démarrer une culture.",
+      },
+    },
+    heat: {
+      title: "Températures extrêmes",
+      frost: {
+        status: "Risque de gel",
+        desc: "Les nuits approchent 0 °C. Choisissez des espèces tolérantes au froid.",
+      },
+      hot: {
+        status: "Forte chaleur",
+        desc: "Pics élevés accélérant l'évaporation. Les cultures sensibles risquent des pertes.",
+      },
+      warn: {
+        status: "Exigence modérée",
+        desc: "Températures un peu chaudes ou nuits fraîches. Vérifiez les seuils de la culture.",
+      },
+      good: {
+        status: "Climat favorable",
+        desc: "Températures équilibrées pour les cultures adaptées à la région.",
+      },
+    },
+    health: {
+      alert: {
+        title: "Santé du milieu",
+        status: "Risque fongique",
+        desc: "Forte humidité et pluies favorisant les maladies foliaires. La rotation casse ces cycles.",
+      },
+      warn: {
+        title: "Santé du milieu",
+        status: "Humidité à suivre",
+        desc: "Humidité élevée ou faible ensoleillement. Évitez l'excès d'eau stagnante.",
+      },
+      good: {
+        title: "Santé du milieu",
+        status: "Milieu sain",
+        desc: "Bon ensoleillement et humidité équilibrée pour le feuillage.",
+      },
+    },
+    erosion: {
+      alert: {
+        title: "Protection du sol",
+        status: "Risque d'érosion",
+        desc: "Terrain en pente exposé au ruissellement. Utilisez des couverts végétaux.",
+      },
+      warn: {
+        title: "Protection du sol",
+        status: "Pente modérée",
+        desc: "Gardez des résidus ou bandes végétales pour freiner le ruissellement.",
+      },
+      good: {
+        title: "Protection du sol",
+        status: "Terrain stable",
+        desc: "Relief plat avec faible risque d'érosion hydrique.",
+      },
+    },
+    headlineOk: "Votre parcelle présente des conditions globalement stables.",
+    headlineAlert: (items) =>
+      `Attention principale sur : ${items}. Une rotation adaptée réduit ce risque.`,
+    headlineWarn: (items) =>
+      `Conditions gérables, avec prudence sur : ${items}.`,
+  },
+  pt: {
+    water: {
+      alert: {
+        title: "Água disponível",
+        status: "Seco / Déficit",
+        desc: "Pouquíssima chuva em 30 dias e solo seco. Priorize culturas econômicas em água.",
+      },
+      warn: {
+        title: "Água disponível",
+        status: "Umidade moderada",
+        desc: "Chuva moderada. Cobertura vegetal ou culturas tolerantes à seca ajudam a reter água.",
+      },
+      good: {
+        title: "Água disponível",
+        status: "Boa umidade",
+        desc: "O solo tem umidade suficiente para iniciar o ciclo da cultura.",
+      },
+    },
+    heat: {
+      title: "Extremos de temperatura",
+      frost: {
+        status: "Risco de geada",
+        desc: "Mínimas próximas de 0 °C. Escolha culturas resistentes ao frio.",
+      },
+      hot: {
+        status: "Calor intenso",
+        desc: "Máximas elevadas aceleram a perda de água e podem reduzir a produtividade.",
+      },
+      warn: {
+        status: "Atenção térmica",
+        desc: "Temperaturas um pouco altas ou noites frias. Verifique a tolerância da cultura.",
+      },
+      good: {
+        status: "Clima favorável",
+        desc: "Temperaturas equilibradas para o desenvolvimento das culturas.",
+      },
+    },
+    health: {
+      alert: {
+        title: "Ambiente da lavoura",
+        status: "Risco de fungos",
+        desc: "Alta umidade e chuvas favorecem doenças foliares. A rotação ajuda a quebrar ciclos.",
+      },
+      warn: {
+        title: "Ambiente da lavoura",
+        status: "Vigiar umidade",
+        desc: "Umidade alta ou pouca luz solar. Evite encharcamentos.",
+      },
+      good: {
+        title: "Ambiente da lavoura",
+        status: "Ambiente sadio",
+        desc: "Boa radiação solar e umidade equilibrada para o crescimento foliar.",
+      },
+    },
+    erosion: {
+      alert: {
+        title: "Proteção do solo",
+        status: "Risco de erosão",
+        desc: "Terreno inclinado sujeito à perda de solo. Use plantas de cobertura.",
+      },
+      warn: {
+        title: "Proteção do solo",
+        status: "Declive moderado",
+        desc: "Mantenha palhada ou faixas de contenção para reduzir o escoamento.",
+      },
+      good: {
+        title: "Proteção do solo",
+        status: "Terreno estável",
+        desc: "Relevo plano com baixo risco de arraste de solo.",
+      },
+    },
+    headlineOk: "Sua área apresenta condições estáveis no geral.",
+    headlineAlert: (items) =>
+      `Atenção principal em: ${items}. Uma boa rotação reduz esse risco.`,
+    headlineWarn: (items) =>
+      `Condições manejáveis, com atenção em: ${items}.`,
+  },
+};
+
 export function buildFieldDiagnostics(
   climate: ClimateMetrics,
+  lang: Lang,
   fallbackSlopePct?: number
 ): { cards: DiagnosticCard[]; headline: string } {
+  const c = COPY[lang];
   const rain = climate.rain30dMm ?? 0;
   const sm = climate.soilMoistureM3;
   const tMax = climate.tempMaxC ?? 24;
@@ -32,149 +381,93 @@ export function buildFieldDiagnostics(
   const rh = climate.humidityPct ?? 65;
   const slope = climate.slopePct ?? fallbackSlopePct ?? 2;
 
-  // 1. Agua disponible
-  let water: DiagnosticCard;
-  if (rain < 15 && (sm === null || sm < 0.16)) {
-    water = {
-      id: "water",
-      title: "Agua disponible",
-      level: "alert",
-      statusLabel: "Escasez / Seco",
-      explanation:
-        "Casi no ha llovido en 30 días y el suelo está seco. Prioriza cultivos que consuman poca agua o riego por goteo.",
-    };
-  } else if (rain < 45 || (sm !== null && sm < 0.22)) {
-    water = {
-      id: "water",
-      title: "Agua disponible",
-      level: "warn",
-      statusLabel: "Humedad justa",
-      explanation:
-        "Lluvia moderada. Conviene usar coberturas o rotar con cultivos resistentes a periodos secos.",
-    };
-  } else {
-    water = {
-      id: "water",
-      title: "Agua disponible",
-      level: "good",
-      statusLabel: "Buena disponibilidad",
-      explanation:
-        "El suelo cuenta con humedad suficiente para sostener un cultivo sin estrés hídrico inmediato.",
-    };
-  }
+  const wLevel: RiskLevel =
+    rain < 15 && (sm === null || sm < 0.16)
+      ? "alert"
+      : rain < 45 || (sm !== null && sm < 0.22)
+        ? "warn"
+        : "good";
+  const water: DiagnosticCard = {
+    id: "water",
+    title: c.water[wLevel].title,
+    level: wLevel,
+    statusLabel: c.water[wLevel].status,
+    explanation: c.water[wLevel].desc,
+  };
 
-  // 2. Estrés por calor o frío
   let heat: DiagnosticCard;
   if (tMin <= 2) {
     heat = {
       id: "heat",
-      title: "Temperatura extrema",
+      title: c.heat.title,
       level: "alert",
-      statusLabel: "Riesgo de heladas",
-      explanation:
-        "Las mínimas se acercan a 0 °C. Elige cultivos tolerantes al frío o ajusta la fecha de siembra.",
+      statusLabel: c.heat.frost.status,
+      explanation: c.heat.frost.desc,
     };
   } else if (tMax >= 32) {
     heat = {
       id: "heat",
-      title: "Temperatura extrema",
+      title: c.heat.title,
       level: "alert",
-      statusLabel: "Calor fuerte",
-      explanation:
-        "Máximas altas que aceleran la pérdida de agua. Cultivos sensibles pueden perder rendimiento.",
+      statusLabel: c.heat.hot.status,
+      explanation: c.heat.hot.desc,
     };
   } else if (tMax >= 28 || tMin <= 6) {
     heat = {
       id: "heat",
-      title: "Temperatura extrema",
+      title: c.heat.title,
       level: "warn",
-      statusLabel: "Exigencia moderada",
-      explanation:
-        "Temperaturas algo exigentes en horas pico o madrugadas frías. Revisa la tolerancia de tu cultivo.",
+      statusLabel: c.heat.warn.status,
+      explanation: c.heat.warn.desc,
     };
   } else {
     heat = {
       id: "heat",
-      title: "Temperatura extrema",
+      title: c.heat.title,
       level: "good",
-      statusLabel: "Clima favorable",
-      explanation:
-        "Temperaturas estables y cómodas para el crecimiento de la mayoría de cultivos.",
+      statusLabel: c.heat.good.status,
+      explanation: c.heat.good.desc,
     };
   }
 
-  // 3. Salud del cultivo / riesgo de hongos
-  let health: DiagnosticCard;
-  if (rh >= 82 && rain >= 40) {
-    health = {
-      id: "health",
-      title: "Ambiente del cultivo",
-      level: "alert",
-      statusLabel: "Riesgo de hongos",
-      explanation:
-        "Mucha humedad y lluvia seguida favorecen enfermedades en hojas. Rotar corta el ciclo de plagas.",
-    };
-  } else if (rh >= 78 || (climate.solarMjM2Day !== null && climate.solarMjM2Day < 12.5)) {
-    health = {
-      id: "health",
-      title: "Ambiente del cultivo",
-      level: "warn",
-      statusLabel: "Vigilar humedad",
-      explanation:
-        "Humedad ambiental alta o poca luz solar. Evita encharcamientos y mejora la ventilación del terreno.",
-    };
-  } else {
-    health = {
-      id: "health",
-      title: "Ambiente del cultivo",
-      level: "good",
-      statusLabel: "Ambiente sano",
-      explanation:
-        "Buena radiación solar y humedad equilibrada, condiciones limpias para el desarrollo foliar.",
-    };
-  }
+  const hLevel: RiskLevel =
+    rh >= 82 && rain >= 40
+      ? "alert"
+      : rh >= 78 || (climate.solarMjM2Day !== null && climate.solarMjM2Day < 12.5)
+        ? "warn"
+        : "good";
+  const health: DiagnosticCard = {
+    id: "health",
+    title: c.health[hLevel].title,
+    level: hLevel,
+    statusLabel: c.health[hLevel].status,
+    explanation: c.health[hLevel].desc,
+  };
 
-  // 4. Riesgo de erosión del suelo
-  let erosion: DiagnosticCard;
-  if (slope >= 15 || (slope >= 8 && rain >= 50)) {
-    erosion = {
-      id: "erosion",
-      title: "Protección del suelo",
-      level: "alert",
-      statusLabel: "Riesgo de erosión",
-      explanation:
-        "Terreno inclinado con riesgo de perder capa fértil. Usa cultivos de cobertura o raíces que fijen el suelo.",
-    };
-  } else if (slope >= 6) {
-    erosion = {
-      id: "erosion",
-      title: "Protección del suelo",
-      level: "warn",
-      statusLabel: "Pendiente moderada",
-      explanation:
-        "Conviene mantener rastrojo o cultivos en fajas para evitar arrastre de nutrientes cuando llueva.",
-    };
-  } else {
-    erosion = {
-      id: "erosion",
-      title: "Protección del suelo",
-      level: "good",
-      statusLabel: "Terreno estable",
-      explanation:
-        "Relieve prácticamente plano, con bajo riesgo de arrastre de suelo por lluvia.",
-    };
-  }
+  const eLevel: RiskLevel =
+    slope >= 15 || (slope >= 8 && rain >= 50)
+      ? "alert"
+      : slope >= 6
+        ? "warn"
+        : "good";
+  const erosion: DiagnosticCard = {
+    id: "erosion",
+    title: c.erosion[eLevel].title,
+    level: eLevel,
+    statusLabel: c.erosion[eLevel].status,
+    explanation: c.erosion[eLevel].desc,
+  };
 
   const cards = [water, heat, health, erosion];
-  const alerts = cards.filter((c) => c.level === "alert").map((c) => c.title.toLowerCase());
-  const warns = cards.filter((c) => c.level === "warn").map((c) => c.title.toLowerCase());
+  const alerts = cards.filter((x) => x.level === "alert").map((x) => x.title.toLowerCase());
+  const warns = cards.filter((x) => x.level === "warn").map((x) => x.title.toLowerCase());
 
-  let headline = "Tu campo muestra condiciones estables en general.";
-  if (alerts.length > 0) {
-    headline = `Atención principal en: ${alerts.join(" y ")}. Una buena rotación puede reducir este riesgo.`;
-  } else if (warns.length > 0) {
-    headline = `Condiciones manejables, con precaución en: ${warns.join(" y ")}.`;
-  }
+  const headline =
+    alerts.length > 0
+      ? c.headlineAlert(alerts.join(" / "))
+      : warns.length > 0
+        ? c.headlineWarn(warns.join(" / "))
+        : c.headlineOk;
 
   return { cards, headline };
 }
