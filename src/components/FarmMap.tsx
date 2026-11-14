@@ -97,8 +97,8 @@ export default function FarmMap({
           { attribution: "Esri World Imagery", maxZoom: 18 }
         )
       : L.tileLayer(
-          "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-          { attribution: "CartoDB", maxZoom: 18 }
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+          { attribution: "Esri World Street Map", maxZoom: 18 }
         );
 
     nextLayer.addTo(map);

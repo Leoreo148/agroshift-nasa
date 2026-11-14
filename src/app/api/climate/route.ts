@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
   const nasaUrl =
     `https://power.larc.nasa.gov/api/temporal/daily/point` +
-    `?parameters=T2M,T2M_MAX,T2M_MIN,RH2M,PRECTOTCORR,ALLSKY_SFC_SW_DWN` +
+    `?parameters=T2M,T2M_MAX,T2M_MIN,RH2M,PRECTOTCORR,ALLSKY_SFC_SW_DWN,WS2M` +
     `&community=AG` +
     `&longitude=${lon.toFixed(4)}&latitude=${lat.toFixed(4)}` +
     `&start=${formatDateYYYYMMDD(startDate)}&end=${formatDateYYYYMMDD(endDate)}` +
@@ -55,13 +55,13 @@ export async function GET(req: NextRequest) {
   const delta = 0.001;
   const elevUrl =
     `https://api.open-meteo.com/v1/elevation` +
-    `?latitude=${lat.toFixed(4)},${(lat + delta).toFixed(4)},${(lat - delta).toFixed(4)},${lat.toFixed(4)},${lat.toFixed(4)}` +
+    `?latitude=${lat.toFixed(4)},${(lat + delta).toFixed(4)},${lat.toFixed(4) === (lat - delta).toFixed(4) ? lat.toFixed(4) : (lat - delta).toFixed(4)},${lat.toFixed(4)},${lat.toFixed(4)}` +
     `&longitude=${lon.toFixed(4)},${lon.toFixed(4)},${lon.toFixed(4)},${(lon + delta).toFixed(4)},${(lon - delta).toFixed(4)}`;
 
   const soilUrl =
     `https://api.open-meteo.com/v1/forecast` +
     `?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
-    `&daily=et0_fao_evapotranspiration&hourly=soil_moisture_0_to_7cm&forecast_days=1&timezone=auto`;
+    `&hourly=soil_moisture_0_to_7cm&forecast_days=1&timezone=auto`;
 
   try {
     const [nasaRes, elevRes, soilRes] = await Promise.allSettled([
@@ -87,6 +87,7 @@ export async function GET(req: NextRequest) {
     const humidityAvg = avgValid(params.RH2M);
     const rainTotalMm = sumValid(params.PRECTOTCORR);
     const solarAvg = avgValid(params.ALLSKY_SFC_SW_DWN);
+    const windAvg = avgValid(params.WS2M);
 
     let elevationM: number | null = null;
     let slopePct: number | null = null;
@@ -105,7 +106,6 @@ export async function GET(req: NextRequest) {
     }
 
     let soilMoistureM3: number | null = null;
-    let et0MmDay: number | null = null;
     if (soilRes.status === "fulfilled" && soilRes.value.ok) {
       const soilJson = await soilRes.value.json();
       const smArr: number[] = soilJson?.hourly?.soil_moisture_0_to_7cm ?? [];
@@ -114,14 +114,28 @@ export async function GET(req: NextRequest) {
         const smMean = validSm.reduce((a, b) => a + b, 0) / validSm.length;
         soilMoistureM3 = Number(smMean.toFixed(3));
       }
-      const et0Arr: number[] = soilJson?.daily?.et0_fao_evapotranspiration ?? [];
-      if (typeof et0Arr[0] === "number") {
-        et0MmDay = Number(et0Arr[0].toFixed(2));
-      }
+    }
+
+    // Cálculo de Eo Penman (1948) en mm/día usando variables NASA POWER (Rs en MJ/m2/día)
+    let eoMmDay: number | null = null;
+    if (tempAvg !== null && humidityAvg !== null && solarAvg !== null) {
+      const u2 = windAvg ?? 2.0;
+      const es = 0.6108 * Math.exp((17.27 * tempAvg) / (tempAvg + 237.3));
+      const ea = es * (humidityAvg / 100);
+      const deltaSv = (4098 * es) / Math.pow(tempAvg + 237.3, 2);
+      const elev = elevationM ?? 50;
+      const presKpa = 101.3 * Math.pow((293 - 0.0065 * elev) / 293, 5.26);
+      const gamma = 0.000665 * presKpa;
+      // Radiación neta aproximada (albedo agua/superficie húmeda 0.23 y onda larga neta empírica)
+      const rnMj = Math.max(0, 0.77 * solarAvg - 2.4);
+      const eaWind = 2.6 * (1 + 0.54 * u2) * Math.max(0, es - ea);
+      eoMmDay = Number(
+        ((deltaSv * (rnMj / 2.45) + gamma * eaWind) / (deltaSv + gamma)).toFixed(2)
+      );
     }
 
     return NextResponse.json({
-      source: "NASA POWER (AG) + DEM/ERA5",
+      source: "NASA POWER (AG) + DEM/SM",
       lat: Number(lat.toFixed(4)),
       lon: Number(lon.toFixed(4)),
       period: {
@@ -134,11 +148,11 @@ export async function GET(req: NextRequest) {
         tempMinC: tempMinAvg !== null ? Number(tempMinAvg.toFixed(1)) : null,
         humidityPct: humidityAvg !== null ? Math.round(humidityAvg) : null,
         rain30dMm: rainTotalMm !== null ? Number(rainTotalMm.toFixed(1)) : null,
-        solarKwhM2Day: solarAvg !== null ? Number(solarAvg.toFixed(2)) : null,
+        solarMjM2Day: solarAvg !== null ? Number(solarAvg.toFixed(2)) : null,
         elevationM,
         slopePct,
         soilMoistureM3,
-        et0MmDay,
+        eoMmDay,
       },
     });
   } catch (err) {

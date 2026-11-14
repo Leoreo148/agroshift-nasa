@@ -14,11 +14,11 @@ export interface ClimateMetrics {
   tempMinC: number | null;
   humidityPct: number | null;
   rain30dMm: number | null;
-  solarKwhM2Day: number | null;
+  solarMjM2Day: number | null;
   elevationM: number | null;
   slopePct: number | null;
   soilMoistureM3: number | null;
-  et0MmDay: number | null;
+  eoMmDay: number | null;
 }
 
 export function buildFieldDiagnostics(
@@ -114,7 +114,7 @@ export function buildFieldDiagnostics(
       explanation:
         "Mucha humedad y lluvia seguida favorecen enfermedades en hojas. Rotar corta el ciclo de plagas.",
     };
-  } else if (rh >= 78 || (climate.solarKwhM2Day !== null && climate.solarKwhM2Day < 3.5)) {
+  } else if (rh >= 78 || (climate.solarMjM2Day !== null && climate.solarMjM2Day < 12.5)) {
     health = {
       id: "health",
       title: "Ambiente del cultivo",

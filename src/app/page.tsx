@@ -350,12 +350,12 @@ export default function HomePage() {
                         Energía solar
                       </div>
                       <div className="mt-1 text-lg font-bold text-white">
-                        {climate?.solarKwhM2Day !== null
-                          ? `${climate?.solarKwhM2Day}`
+                        {climate?.solarMjM2Day !== null
+                          ? `${climate?.solarMjM2Day}`
                           : "—"}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        kWh/m² al día
+                        MJ/m² al día
                       </div>
                     </div>
                   </div>
@@ -507,11 +507,11 @@ export default function HomePage() {
                 </div>
                 <div>
                   <span className="block text-[11px] text-slate-500">
-                    Demanda evaporativa (ET₀)
+                    Evaporación E₀ (Penman 1948)
                   </span>
                   <span className="font-semibold text-white">
-                    {climate?.et0MmDay !== null
-                      ? `${climate?.et0MmDay} mm/día`
+                    {climate?.eoMmDay !== null
+                      ? `${climate?.eoMmDay} mm/día`
                       : "—"}
                   </span>
                 </div>
