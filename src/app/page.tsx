@@ -16,6 +16,8 @@ import {
   ShieldAlert,
   ChevronDown,
   ChevronUp,
+  Repeat,
+  Award,
 } from "lucide-react";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 import {
@@ -23,6 +25,10 @@ import {
   type ClimateMetrics,
   type RiskLevel,
 } from "@/lib/diagnostics";
+import {
+  evaluateCropRotations,
+  type FarmerPriority,
+} from "@/lib/rotations";
 
 const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ssr: false,
@@ -75,6 +81,7 @@ export default function HomePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState<boolean>(false);
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
+  const [priority, setPriority] = useState<FarmerPriority>("water");
 
   useEffect(() => {
     let active = true;
@@ -171,6 +178,10 @@ export default function HomePage() {
   const diagnostic = climate
     ? buildFieldDiagnostics(climate, selectedPreset?.slopePct)
     : null;
+
+  const rotations = climate
+    ? evaluateCropRotations(climate, priority, selectedPreset?.slopePct)
+    : [];
 
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-5 py-8 sm:px-8 sm:py-10">
@@ -518,6 +529,161 @@ export default function HomePage() {
               </div>
             )}
           </>
+        )}
+      </section>
+
+      {/* PASO 3: COMPARADOR SIMPLE DE ROTACIONES */}
+      <section className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 sm:p-7">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+              Paso 3 de 3
+            </span>
+            <h2 className="text-xl font-semibold text-white">
+              ¿Qué cultivo te conviene rotar aquí?
+            </h2>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: "water", label: "💧 Ahorrar agua" },
+                { id: "soil", label: "🌱 Mejorar suelo" },
+                { id: "climate", label: "🌡️ Resistir clima" },
+                { id: "erosion", label: "⛰️ Frenar erosión" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setPriority(opt.id)}
+                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                  priority === opt.id
+                    ? "border-emerald-500 bg-emerald-500/15 text-emerald-300"
+                    : "border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loading || rotations.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/50 p-5 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+            Calculando mejores rotaciones para esta parcela...
+          </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {rotations.slice(0, 3).map((crop, idx) => {
+              const isBest = idx === 0;
+              return (
+                <div
+                  key={crop.id}
+                  className={`flex flex-col justify-between rounded-2xl border p-5 ${
+                    isBest
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : "border-slate-800 bg-slate-950/60"
+                  }`}
+                >
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-slate-400">
+                        {crop.category}
+                      </span>
+                      {isBest ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-300">
+                          <Award className="h-3.5 w-3.5" />
+                          Mejor opción
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-300">
+                          <Repeat className="h-3 w-3" />
+                          Opción #{idx + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="text-lg font-bold text-white">
+                        {crop.name}
+                      </h3>
+                      <span className="text-lg font-bold text-emerald-400">
+                        {crop.matchScore}%
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-xs leading-relaxed text-slate-200">
+                      {crop.reason}
+                    </p>
+
+                    <div className="mt-4 space-y-2.5">
+                      <div>
+                        <div className="mb-1 flex justify-between text-[11px] text-slate-400">
+                          <span>Ahorro de agua</span>
+                          <span className="text-slate-200">
+                            {crop.waterSavingScore}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-sky-400"
+                            style={{ width: `${crop.waterSavingScore}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="mb-1 flex justify-between text-[11px] text-slate-400">
+                          <span>Cuidado del suelo</span>
+                          <span className="text-slate-200">
+                            {crop.soilScore}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-emerald-400"
+                            style={{ width: `${crop.soilScore}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="mb-1 flex justify-between text-[11px] text-slate-400">
+                          <span>Ajuste al clima</span>
+                          <span className="text-slate-200">
+                            {crop.climateFitScore}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-amber-400"
+                            style={{ width: `${crop.climateFitScore}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-1.5 border-t border-slate-800/80 pt-3 text-[11px]">
+                    <p className="text-slate-300">
+                      <span className="font-semibold text-emerald-300">
+                        Sanidad:
+                      </span>{" "}
+                      {crop.pestBreakBenefit}
+                    </p>
+                    <p className="text-slate-400">
+                      <span className="font-semibold text-amber-300">
+                        A tener en cuenta:
+                      </span>{" "}
+                      {crop.tradeOff}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </section>
     </main>
