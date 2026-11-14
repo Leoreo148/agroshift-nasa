@@ -32,6 +32,7 @@ import {
   type FarmerPriority,
 } from "@/lib/rotations";
 import { LANG_LABELS, T, type Lang } from "@/lib/i18n";
+import type { Forecast7d } from "@/app/api/climate/route";
 
 const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ssr: false,
@@ -82,6 +83,7 @@ export default function HomePage() {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [climate, setClimate] = useState<ClimateMetrics | null>(null);
+  const [forecast, setForecast] = useState<Forecast7d | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState<boolean>(false);
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
@@ -112,6 +114,7 @@ export default function HomePage() {
       .then((data) => {
         if (!active) return;
         setClimate(data.summary);
+        setForecast(data.forecast ?? null);
         setLoading(false);
       })
       .catch((err) => {
@@ -422,6 +425,20 @@ export default function HomePage() {
                     </div>
                   </div>
                 ) : null}
+
+                {!loading && forecast && (
+                  <div className="mt-3 rounded-xl border border-sky-500/30 bg-sky-500/5 px-3 py-2.5 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-sky-300">
+                        {t.forecast7dLabel}
+                      </span>
+                      <span className="text-[11px] text-slate-300">
+                        {forecast.minTempC}°–{forecast.maxTempC}°C ·{" "}
+                        {forecast.totalRainMm} mm
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

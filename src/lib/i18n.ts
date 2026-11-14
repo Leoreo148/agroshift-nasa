@@ -72,6 +72,7 @@ export interface Translations {
   methodTitle: string;
   methodItems: string[];
   farmerDisclaimer: string;
+  forecast7dLabel: string;
 }
 
 export const T: Record<Lang, Translations> = {
@@ -147,6 +148,7 @@ export const T: Record<Lang, Translations> = {
     ],
     farmerDisclaimer:
       "Decision-support notice: This tool helps identify climate patterns and crop rotation possibilities from open NASA & FAO data, and does not replace the farmer's judgment or local agricultural experience.",
+    forecast7dLabel: "Next 7 days (Meteomatics)",
   },
   es: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -220,6 +222,7 @@ export const T: Record<Lang, Translations> = {
     ],
     farmerDisclaimer:
       "Herramienta de apoyo: Ayuda a identificar patrones climáticos y posibilidades de rotación con datos abiertos de NASA y FAO, pero no sustituye el criterio del agricultor ni la experiencia agrícola local.",
+    forecast7dLabel: "Próximos 7 días (Meteomatics)",
   },
   fr: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -293,6 +296,7 @@ export const T: Record<Lang, Translations> = {
     ],
     farmerDisclaimer:
       "Outil d'aide à la décision : cette application aide à identifier des tendances climatiques et des possibilités de rotation via les données ouvertes NASA/FAO, sans remplacer le jugement de l'agriculteur ni l'expérience locale.",
+    forecast7dLabel: "7 prochains jours (Meteomatics)",
   },
   pt: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -366,5 +370,6 @@ export const T: Record<Lang, Translations> = {
     ],
     farmerDisclaimer:
       "Ferramenta de apoio: ajuda a identificar padrões climáticos e possibilidades de rotação com dados abertos da NASA e FAO, sem substituir o critério do agricultor nem a experiência agrícola local.",
+    forecast7dLabel: "Próximos 7 dias (Meteomatics)",
   },
 };
