@@ -1,3 +1,5 @@
+import type { CurrentCropType } from "@/lib/rotations";
+
 export type Lang = "en" | "es" | "fr" | "pt";
 
 export const LANG_LABELS: Record<Lang, string> = {
@@ -80,6 +82,18 @@ export interface Translations {
   solutionText: string;
   districtTitle: string;
   districtText: string;
+  sentinelNote: string;
+  currentCropSelectorLabel: string;
+  currentCropTypes: Record<CurrentCropType, string>;
+  problemByCrop: Record<
+    CurrentCropType,
+    {
+      title: string;
+      points: string[];
+      solutionTitle: string;
+      solutionText: string;
+    }
+  >;
 }
 
 export const T: Record<Lang, Translations> = {
@@ -169,6 +183,61 @@ export const T: Record<Lang, Translations> = {
     districtTitle: "District & Organization Scope (How to detect non-rotated areas)",
     districtText:
       "Cooperatives and local agencies combine 5-year soil wetness trends (NASA POWER GWETTOP) with multi-year vegetation indices (Sentinel-2 / MODIS NDVI) to separate stable perennial orchards from annual fields losing vigor or failing to rotate.",
+    sentinelNote:
+      "Remote-sensing note (Sentinel-2 / MODIS): In smallholder plots or low-canopy stages, 10–250 m pixels mix crop foliage with bare soil (mixed-pixel effect), depressing NDVI and hiding crop identity. We therefore use NDVI only for district-scale alerts and rely on climate, Eo (Penman 1948 / RELASPO), slope, and local knowledge at field level.",
+    currentCropSelectorLabel: "Current crop on this plot",
+    currentCropTypes: {
+      cereal: "🌾 Continuous cereal (Maize/Wheat/Sorghum)",
+      tuber: "🥔 Root / tuber (Potato/Cassava)",
+      legume: "🫘 Legume (Bean/Cowpea)",
+      perennial: "🍇 Perennial / orchard (Grape/Fruit tree)",
+    },
+    problemByCrop: {
+      cereal: {
+        title: "The Problem: Repeating cereals on this soil",
+        points: [
+          "Higher fertilizer spend: continuous cereals fix 0 kg N/ha and deplete soil nitrogen.",
+          "Erosion exposure: row cereals leave high RUSLE cover vulnerability (C ≈ 0.35–0.40).",
+          "Pest & weed buildup: repeating grass crops feeds root nematodes and adapted weeds.",
+        ],
+        solutionTitle: "The Solution for this soil",
+        solutionText:
+          "Rotating to legumes or cover crops restores natural nitrogen (BNF), protects topsoil, and breaks grass pest cycles.",
+      },
+      tuber: {
+        title: "The Problem: Repeating potato / tubers on this soil",
+        points: [
+          "Heavy soil disturbance: harvesting tubers loosens topsoil and accelerates RUSLE erosion on slopes.",
+          "Soil-borne pathogens: continuous tubers multiply cyst nematodes and fungal wilt.",
+          "High input dependency: rising fungicide and synthetic fertilizer costs each season.",
+        ],
+        solutionTitle: "The Solution for this soil",
+        solutionText:
+          "Rotating to quinoa, oats+vetch cover, or legumes breaks tuber disease cycles and anchors soil structure.",
+      },
+      legume: {
+        title: "The Problem: Repeating the same legume without break",
+        points: [
+          "Root-rot accumulation: repeating legumes builds Fusarium and anthracnose pressure.",
+          "Untapped nitrogen: residual fixed nitrogen is lost if not captured by a following cereal.",
+          "Lower residue cover: some pulses leave sparse stubble against wind and rain.",
+        ],
+        solutionTitle: "The Solution for this soil",
+        solutionText:
+          "Alternating with drought-hardy cereals (sorghum, millet, quinoa) or grass+legume cover captures residual N and balances soil biology.",
+      },
+      perennial: {
+        title: "The Problem in orchards: Bare alleys (Do NOT uproot trees)",
+        points: [
+          "Perennial fruit crops remain for years and should NOT be rotated annually.",
+          "Bare soil between rows loses moisture faster under high Eo (Penman 1948) and erodes in rain.",
+          "Soil compaction & low biodiversity in clean-tilled orchard alleys.",
+        ],
+        solutionTitle: "The Solution: Living inter-row cover",
+        solutionText:
+          "Planting low-stature legumes or cover mixes between orchard rows fixes nitrogen, cuts evaporation, and stops erosion without competing with the crop.",
+      },
+    },
   },
   es: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -256,6 +325,61 @@ export const T: Record<Lang, Translations> = {
     districtTitle: "Alcance para distritos y organizaciones (Detectar áreas sin rotación)",
     districtText:
       "Cooperativas y municipios cruzan la tendencia de humedad superficial (NASA POWER GWETTOP) con series históricas de NDVI/EVI (Sentinel-2 / MODIS) para distinguir frutales perennes estables de lotes anuales que no rotan y pierden vigor o suelo.",
+    sentinelNote:
+      "Limitación técnica de Sentinel-2 / MODIS: en parcelas pequeñas o con poco volumen foliar, el píxel de 10–250 m mezcla cultivo con suelo desnudo (píxel mixto), haciendo que el NDVI caiga y no distinga cultivos con precisión. Por eso el NDVI sirve como alerta distrital, pero en parcela decidimos con clima, Eo (Penman 1948 / RELASPO), pendiente y criterio local.",
+    currentCropSelectorLabel: "¿Qué vienes sembrando aquí?",
+    currentCropTypes: {
+      cereal: "🌾 Cereal continuo (Maíz/Trigo/Sorgo)",
+      tuber: "🥔 Tubérculo / Papa",
+      legume: "🫘 Leguminosa (Frijol/Caupí)",
+      perennial: "🍇 Frutal o cultivo permanente",
+    },
+    problemByCrop: {
+      cereal: {
+        title: "El Problema: Repetir cereal en este suelo",
+        points: [
+          "Más gasto en fertilizante: los cereales continuos fijan 0 kg N/ha y agotan el nitrógeno.",
+          "Pérdida de suelo: los cultivos en hilera dejan exposición RUSLE alta (C ≈ 0.35–0.40).",
+          "Entrada de plagas: repetir gramíneas multiplica nemátodos y malezas especializadas.",
+        ],
+        solutionTitle: "La Solución para este suelo",
+        solutionText:
+          "Rotar con leguminosas o coberturas aporta nitrógeno natural (BNF), protege la capa arable y corta plagas de gramíneas.",
+      },
+      tuber: {
+        title: "El Problema: Repetir papa o tubérculos aquí",
+        points: [
+          "Fuerte erosión en cosecha: remover el suelo acelera el lavado en pendiente (RUSLE).",
+          "Plagas de suelo persistentes: repetir papa multiplica nemátodos quiste y hongos de raíz.",
+          "Mayor costo sanitario: obliga a gastar más en fungicidas y fertilizantes cada campaña.",
+        ],
+        solutionTitle: "La Solución para este suelo",
+        solutionText:
+          "Alternar con quinua, avena+vicia o leguminosas rompe el ciclo sanitario tras papa y estabiliza el suelo.",
+      },
+      legume: {
+        title: "El Problema: Repetir leguminosa sin alternancia",
+        points: [
+          "Hongos radiculares: sembrar siempre leguminosa acumula Fusarium y enfermedades de raíz.",
+          "Nitrógeno desaprovechado: parte del N fijado se lixivia si no sigue un cereal que lo absorba.",
+          "Menor rastrojo protector frente a lluvia erosiva o viento.",
+        ],
+        solutionTitle: "La Solución para este suelo",
+        solutionText:
+          "Alternar con un cereal rústico (sorgo, mijo perla, quinua) o cobertura aprovecha el N fijado y corta patógenos.",
+      },
+      perennial: {
+        title: "El Problema en frutales: Calles desnudas (NO se arranca el árbol)",
+        points: [
+          "Los frutales permanentes se mantienen años; aquí no aplica rotación anual del cultivo principal.",
+          "Dejar el suelo desnudo entre surcos aumenta la evaporación (Eo Penman 1948) y la erosión.",
+          "Compactación y pérdida de materia orgánica en las calles de paso.",
+        ],
+        solutionTitle: "La Solución: Cobertura viva entre hileras",
+        solutionText:
+          "Sembrar coberturas bajas o leguminosas entre calles protege la humedad del suelo, aporta N y frena erosión sin competir con el frutal.",
+      },
+    },
   },
   fr: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -343,6 +467,61 @@ export const T: Record<Lang, Translations> = {
     districtTitle: "Portée districts & organisations (Détecter les zones sans rotation)",
     districtText:
       "Les coopératives croisent l'humidité du sol sur 5 ans (NASA POWER GWETTOP) avec les séries NDVI/EVI (Sentinel-2 / MODIS) pour distinguer les vergers pérennes stables des parcelles annuelles en perte de vigueur.",
+    sentinelNote:
+      "Limite technique Sentinel-2 / MODIS : sur petites parcelles, le pixel de 10–250 m mélange végétation et sol nu (pixel mixte), faisant chuter le NDVI. Il sert donc d'alerte à l'échelle du district, complété à la parcelle par climat, Eo (Penman 1948 / RELASPO) et expertise locale.",
+    currentCropSelectorLabel: "Culture actuelle sur cette parcelle",
+    currentCropTypes: {
+      cereal: "🌾 Céréale continue (Maïs/Blé/Sorgho)",
+      tuber: "🥔 Tubercule (Pomme de terre)",
+      legume: "🫘 Légumineuse (Haricot/Niébé)",
+      perennial: "🍇 Culture pérenne / Verger",
+    },
+    problemByCrop: {
+      cereal: {
+        title: "Le Problème : Répéter les céréales ici",
+        points: [
+          "Coût d'engrais accru : les céréales fixent 0 kg N/ha et épuisent l'azote.",
+          "Exposition à l'érosion : facteur RUSLE élevé (C ≈ 0,35–0,40).",
+          "Pression des ravageurs et adventices spécialisées des graminées.",
+        ],
+        solutionTitle: "La Solution pour ce sol",
+        solutionText:
+          "Alterner avec légumineuses ou couverts restaure l'azote (BNF), protège le sol et coupe les cycles parasitaires.",
+      },
+      tuber: {
+        title: "Le Problème : Répéter les tubercules ici",
+        points: [
+          "Forte perturbation du sol à la récolte, accélérant l'érosion en pente (RUSLE).",
+          "Accumulation de nématodes et maladies fongiques du sol.",
+          "Coûts croissants en intrants phytosanitaires.",
+        ],
+        solutionTitle: "La Solution pour ce sol",
+        solutionText:
+          "La rotation avec quinoa, avoine+vesce ou légumineuses assainit le sol et stabilise la structure.",
+      },
+      legume: {
+        title: "Le Problème : Répéter la même légumineuse",
+        points: [
+          "Risque accru de pourritures racinaires (Fusarium) sans coupure.",
+          "Azote résiduel sous-exploité faute d'une céréale suivante.",
+          "Couverture de résidus souvent plus faible après récolte.",
+        ],
+        solutionTitle: "La Solution pour ce sol",
+        solutionText:
+          "Alterner avec sorgho, mil ou quinoa valorise l'azote fixé et rééquilibre le sol.",
+      },
+      perennial: {
+        title: "En verger : Sol nu entre rangs (On ne coupe pas l'arbre)",
+        points: [
+          "Les cultures pérennes restent en place ; la rotation annuelle ne s'applique pas au verger.",
+          "L'inter-rang nu augmente l'évaporation (Eo Penman 1948) et le ruissellement.",
+          "Perte de matière organique et tassement dans les allées.",
+        ],
+        solutionTitle: "La Solution : Couvert vivant inter-rangs",
+        solutionText:
+          "Un couvert bas de légumineuses/graminées entre les rangs fixe l'azote, retient l'humidité et freine l'érosion.",
+      },
+    },
   },
   pt: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -430,5 +609,60 @@ export const T: Record<Lang, Translations> = {
     districtTitle: "Alcance para distritos e organizações (Detectar áreas sem rotação)",
     districtText:
       "Cooperativas e órgãos locais cruzam a umidade do solo de 5 anos (NASA POWER GWETTOP) com séries NDVI/EVI (Sentinel-2 / MODIS) para diferenciar pomares perenes estáveis de áreas anuais sem rotação perdendo vigor.",
+    sentinelNote:
+      "Limitação técnica de Sentinel-2 / MODIS: em pequenas parcelas ou baixo volume foliar, o pixel de 10–250 m mistura planta e solo exposto (efeito pixel misto), derrubando o NDVI. Por isso usamos NDVI apenas como alerta distrital e decidimos na parcela com clima, Eo (Penman 1948 / RELASPO), declive e critério local.",
+    currentCropSelectorLabel: "O que você cultiva hoje aqui?",
+    currentCropTypes: {
+      cereal: "🌾 Cereal contínuo (Milho/Trigo/Sorgo)",
+      tuber: "🥔 Tubérculo (Batata/Mandioca)",
+      legume: "🫘 Leguminosa (Feijão/Caupi)",
+      perennial: "🍇 Frutífera ou perene",
+    },
+    problemByCrop: {
+      cereal: {
+        title: "O Problema: Repetir cereal neste solo",
+        points: [
+          "Mais gasto com adubo: cereais contínuos fixam 0 kg N/ha e esgotam o nitrogênio.",
+          "Exposição à erosão: alto fator RUSLE (C ≈ 0,35–0,40).",
+          "Acúmulo de pragas e plantas daninhas de gramíneas.",
+        ],
+        solutionTitle: "A Solução para este solo",
+        solutionText:
+          "Rotacionar com leguminosas ou coberturas devolve nitrogênio (BNF), protege o solo e quebra ciclos de pragas.",
+      },
+      tuber: {
+        title: "O Problema: Repetir batata ou tubérculos aqui",
+        points: [
+          "Forte revolvimento do solo na colheita, acelerando a erosão em declive (RUSLE).",
+          "Acúmulo de nematoides e fungos de solo.",
+          "Maior custo com defensivos e fertilizantes a cada safra.",
+        ],
+        solutionTitle: "A Solução para este solo",
+        solutionText:
+          "Alternar com quinoa, aveia+ervilhaca ou leguminosas quebra doenças de solo e estabiliza a área.",
+      },
+      legume: {
+        title: "O Problema: Repetir leguminosa sem pausa",
+        points: [
+          "Acúmulo de fungos radiculares (Fusarium) sem alternância de família.",
+          "Desperdício do nitrogênio fixado sem um cereal na sequência.",
+          "Menor palhada residual contra chuva erosiva.",
+        ],
+        solutionTitle: "A Solução para este solo",
+        solutionText:
+          "Alternar com sorgo, milheto ou quinoa aproveita o N fixado e equilibra a biologia do solo.",
+      },
+      perennial: {
+        title: "Em frutíferas: Ruas expostas (NÃO se arranca o pomar)",
+        points: [
+          "Culturas perenes permanecem por anos; não se aplica rotação anual da cultura principal.",
+          "Solo nu nas entrelinhas aumenta a evaporação (Eo Penman 1948) e a erosão.",
+          "Compactação e perda de matéria orgânica nas ruas.",
+        ],
+        solutionTitle: "A Solução: Cobertura viva nas entrelinhas",
+        solutionText:
+          "Plantar leguminosas baixas ou coberturas entre as linhas fixa N, retém umidade e contém erosão sem competir com a frutífera.",
+      },
+    },
   },
 };

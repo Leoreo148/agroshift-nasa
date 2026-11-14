@@ -30,6 +30,7 @@ import {
 } from "@/lib/diagnostics";
 import {
   evaluateCropRotations,
+  type CurrentCropType,
   type FarmerPriority,
 } from "@/lib/rotations";
 import { LANG_LABELS, T, type Lang } from "@/lib/i18n";
@@ -90,6 +91,9 @@ export default function HomePage() {
   const [locating, setLocating] = useState<boolean>(false);
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
   const [priority, setPriority] = useState<FarmerPriority>("water");
+  const [currentCropType, setCurrentCropType] = useState<CurrentCropType>(
+    FARM_PRESETS[0].defaultCropType
+  );
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.language) {
@@ -133,6 +137,7 @@ export default function HomePage() {
 
   function choosePreset(preset: FarmPreset) {
     setSelectedPreset(preset);
+    setCurrentCropType(preset.defaultCropType);
     setLat(preset.lat);
     setLon(preset.lon);
     setLatInput(String(preset.lat));
@@ -212,9 +217,12 @@ export default function HomePage() {
           agroZone,
           priority,
           lang,
-          selectedPreset?.slopePct
+          selectedPreset?.slopePct,
+          currentCropType
         )
       : [];
+
+  const activeProblem = t.problemByCrop[currentCropType];
 
   return (
     <main className="mx-auto max-w-6xl space-y-8 px-5 py-8 sm:px-8 sm:py-10">
@@ -709,23 +717,47 @@ export default function HomePage() {
           </div>
         </div>
 
+        <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5">
+          <div className="mb-2 text-xs font-medium text-slate-300">
+            {t.currentCropSelectorLabel}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(["cereal", "tuber", "legume", "perennial"] as CurrentCropType[]).map(
+              (cropKey) => (
+                <button
+                  key={cropKey}
+                  type="button"
+                  onClick={() => setCurrentCropType(cropKey)}
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                    currentCropType === cropKey
+                      ? "border-sky-500 bg-sky-500/15 text-sky-300"
+                      : "border-slate-800 bg-slate-900/80 text-slate-300 hover:border-slate-700"
+                  }`}
+                >
+                  {t.currentCropTypes[cropKey]}
+                </button>
+              )
+            )}
+          </div>
+        </div>
+
         <div className="mb-5 grid gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-300">
-              {t.problemTitle}
+              {activeProblem.title}
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-slate-300">
-              {t.problemPoints.map((pt, i) => (
+              {activeProblem.points.map((pt, i) => (
                 <li key={i}>{pt}</li>
               ))}
             </ul>
           </div>
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
-              {t.solutionTitle}
+              {activeProblem.solutionTitle}
             </h3>
             <p className="mt-2 text-xs leading-relaxed text-slate-300">
-              {t.solutionText}
+              {activeProblem.solutionText}
             </p>
           </div>
         </div>
@@ -870,6 +902,9 @@ export default function HomePage() {
           </h3>
           <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
             {t.districtText}
+          </p>
+          <p className="mt-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+            {t.sentinelNote}
           </p>
         </div>
         <div className="border-t border-slate-800/80 pt-4">

@@ -1,10 +1,12 @@
 import type { Lang } from "@/lib/i18n";
+import type { CurrentCropType } from "@/lib/rotations";
 
 export interface FarmPreset {
   id: string;
   lat: number;
   lon: number;
   slopePct: number;
+  defaultCropType: CurrentCropType;
   labels: Record<
     Lang,
     {
@@ -23,6 +25,7 @@ export const FARM_PRESETS: FarmPreset[] = [
     lat: 13.5116,
     lon: 2.1254,
     slopePct: 1.8,
+    defaultCropType: "cereal",
     labels: {
       en: {
         name: "Sahel Semi-Arid",
@@ -63,6 +66,7 @@ export const FARM_PRESETS: FarmPreset[] = [
     lat: -7.1139,
     lon: -79.4688,
     slopePct: 2.1,
+    defaultCropType: "perennial",
     labels: {
       en: {
         name: "Arid Coastal Valley",
@@ -103,6 +107,7 @@ export const FARM_PRESETS: FarmPreset[] = [
     lat: -13.5319,
     lon: -71.9675,
     slopePct: 14.5,
+    defaultCropType: "tuber",
     labels: {
       en: {
         name: "Highland Slope",
@@ -143,6 +148,7 @@ export const FARM_PRESETS: FarmPreset[] = [
     lat: 41.878,
     lon: -93.62,
     slopePct: 3.4,
+    defaultCropType: "cereal",
     labels: {
       en: {
         name: "Temperate Plain",

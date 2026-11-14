@@ -2,6 +2,8 @@ import type { AgroZone, ClimateMetrics } from "@/lib/diagnostics";
 import type { Lang } from "@/lib/i18n";
 
 export type FarmerPriority = "water" | "soil" | "climate" | "erosion";
+export type CurrentCropType = "cereal" | "tuber" | "legume" | "perennial";
+export type BotanicalGroup = "legume" | "cereal" | "pseudocereal" | "cover";
 
 interface CropText {
   name: string;
@@ -13,6 +15,7 @@ interface CropText {
 export interface CropOption {
   id: string;
   scientificName: string;
+  botanicalGroup: BotanicalGroup;
   /** Zonas agroclimáticas donde este cultivo tiene viabilidad agronómica real */
   suitableZones: AgroZone[];
   /** Requerimiento hídrico estacional FAO-56 (mm/ciclo): [min, max] */
@@ -48,6 +51,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "cowpea",
     scientificName: "Vigna unguiculata",
+    botanicalGroup: "legume",
     suitableZones: ["tropicalArid", "tropicalHumid"],
     waterRangeMm: [300, 600],
     ecoCropTempC: [10, 20, 35, 42],
@@ -90,6 +94,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "pearl-millet",
     scientificName: "Pennisetum glaucum",
+    botanicalGroup: "cereal",
     suitableZones: ["tropicalArid", "tropicalHumid"],
     waterRangeMm: [350, 500],
     ecoCropTempC: [12, 25, 35, 44],
@@ -131,6 +136,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "sorghum",
     scientificName: "Sorghum bicolor",
+    botanicalGroup: "cereal",
     suitableZones: ["tropicalArid", "tropicalHumid", "temperate"],
     waterRangeMm: [450, 650],
     ecoCropTempC: [12, 20, 34, 42],
@@ -172,6 +178,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "chickpea",
     scientificName: "Cicer arietinum",
+    botanicalGroup: "legume",
     suitableZones: ["tropicalArid", "highland", "temperate"],
     waterRangeMm: [300, 500],
     ecoCropTempC: [5, 15, 25, 36],
@@ -213,6 +220,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "quinoa",
     scientificName: "Chenopodium quinoa",
+    botanicalGroup: "pseudocereal",
     suitableZones: ["highland", "temperate"],
     waterRangeMm: [300, 500],
     ecoCropTempC: [-3, 15, 25, 34],
@@ -254,6 +262,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "cover-oats-vetch",
     scientificName: "Avena sativa + Vicia sativa",
+    botanicalGroup: "cover",
     suitableZones: ["highland", "temperate"],
     waterRangeMm: [350, 550],
     ecoCropTempC: [-3, 12, 24, 31],
@@ -295,6 +304,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "legume-bean",
     scientificName: "Phaseolus vulgaris",
+    botanicalGroup: "legume",
     suitableZones: ["tropicalArid", "tropicalHumid", "highland", "temperate"],
     waterRangeMm: [350, 500],
     ecoCropTempC: [10, 15, 27, 35],
@@ -336,6 +346,7 @@ const CROP_CATALOG: CropOption[] = [
   {
     id: "maize",
     scientificName: "Zea mays",
+    botanicalGroup: "cereal",
     suitableZones: ["tropicalHumid", "temperate", "tropicalArid"],
     waterRangeMm: [500, 800],
     ecoCropTempC: [10, 18, 32, 40],
@@ -402,12 +413,17 @@ function formatReason(
   climateFit: number,
   tAvg: number,
   slope: number,
-  cFactor: number
+  cFactor: number,
+  currentCropType: CurrentCropType,
+  group: BotanicalGroup
 ): string {
   const midW = (waterRange[0] + waterRange[1]) / 2;
   const parts: string[] = [];
 
   if (lang === "en") {
+    if (currentCropType === "perennial" && (group === "cover" || group === "legume")) {
+      parts.push("ideal inter-row cover without uprooting orchard");
+    }
     if (midW <= 450) parts.push(`low water demand (${waterRange[0]}–${waterRange[1]} mm)`);
     if (bnf[1] > 0) parts.push(`fixes ${bnf[0]}–${bnf[1]} kg N/ha`);
     if (climateFit >= 85) parts.push(`well-suited to ${tAvg} °C mean temperature`);
@@ -417,6 +433,9 @@ function formatReason(
       : "Viable option with supplemental irrigation and balanced fertilization.";
   }
   if (lang === "fr") {
+    if (currentCropType === "perennial" && (group === "cover" || group === "legume")) {
+      parts.push("couvert idéal entre rangs sans arracher le verger");
+    }
     if (midW <= 450) parts.push(`faible besoin en eau (${waterRange[0]}–${waterRange[1]} mm)`);
     if (bnf[1] > 0) parts.push(`fixe ${bnf[0]}–${bnf[1]} kg N/ha`);
     if (climateFit >= 85) parts.push(`adapté à ${tAvg} °C en moyenne`);
@@ -426,6 +445,9 @@ function formatReason(
       : "Option viable avec irrigation d'appoint et fertilisation adaptée.";
   }
   if (lang === "pt") {
+    if (currentCropType === "perennial" && (group === "cover" || group === "legume")) {
+      parts.push("cobertura entre linhas sem remover o pomar");
+    }
     if (midW <= 450) parts.push(`baixo consumo hídrico (${waterRange[0]}–${waterRange[1]} mm)`);
     if (bnf[1] > 0) parts.push(`fixa ${bnf[0]}–${bnf[1]} kg N/ha`);
     if (climateFit >= 85) parts.push(`ótimo para média de ${tAvg} °C`);
@@ -435,6 +457,9 @@ function formatReason(
       : "Opção viável com irrigação de apoio e adubação equilibrada.";
   }
 
+  if (currentCropType === "perennial" && (group === "cover" || group === "legume")) {
+    parts.push("cobertura viva entre hileras sin retirar el cultivo permanente");
+  }
   if (midW <= 450) parts.push(`bajo consumo hídrico (${waterRange[0]}–${waterRange[1]} mm/ciclo)`);
   if (bnf[1] > 0) parts.push(`fija ${bnf[0]}–${bnf[1]} kg N/ha`);
   if (climateFit >= 85) parts.push(`óptimo para ${tAvg} °C promedio en esta zona`);
@@ -444,12 +469,38 @@ function formatReason(
     : "Opción viable con riego de apoyo y manejo de fertilización.";
 }
 
+function getRotationBonus(
+  currentCropType: CurrentCropType,
+  candidateGroup: BotanicalGroup
+): number {
+  if (currentCropType === "perennial") {
+    if (candidateGroup === "cover" || candidateGroup === "legume") return 8;
+    if (candidateGroup === "cereal") return -18;
+    return -6;
+  }
+  if (currentCropType === "cereal") {
+    if (candidateGroup === "legume" || candidateGroup === "cover") return 6;
+    if (candidateGroup === "pseudocereal") return 4;
+    return -8;
+  }
+  if (currentCropType === "tuber") {
+    if (candidateGroup === "cover" || candidateGroup === "pseudocereal") return 6;
+    if (candidateGroup === "legume") return 5;
+    return 0;
+  }
+  // legume -> alternate with cereal / pseudocereal / cover to capture residual N
+  if (candidateGroup === "cereal" || candidateGroup === "pseudocereal") return 6;
+  if (candidateGroup === "cover") return 4;
+  return -8;
+}
+
 export function evaluateCropRotations(
   climate: ClimateMetrics,
   zone: AgroZone,
   priority: FarmerPriority,
   lang: Lang,
-  fallbackSlopePct?: number
+  fallbackSlopePct?: number,
+  currentCropType: CurrentCropType = "cereal"
 ): EvaluatedCrop[] {
   const rain30d = climate.rain30dMm ?? 20;
   const eoDay = climate.eoMmDay ?? 4.5;
@@ -502,12 +553,17 @@ export function evaluateCropRotations(
     };
 
     const w = weights[priority];
-    const matchScore = Math.min(
-      99,
-      Math.round(
-        waterSavingScore * w.wWater +
-          soilScore * w.wSoil +
-          climateFitScore * w.wClimate
+    const rotationBonus = getRotationBonus(currentCropType, crop.botanicalGroup);
+    const matchScore = Math.max(
+      15,
+      Math.min(
+        99,
+        Math.round(
+          waterSavingScore * w.wWater +
+            soilScore * w.wSoil +
+            climateFitScore * w.wClimate +
+            rotationBonus
+        )
       )
     );
 
@@ -533,7 +589,9 @@ export function evaluateCropRotations(
         climateFitScore,
         tAvg,
         slope,
-        crop.rusleCFactor
+        crop.rusleCFactor,
+        currentCropType,
+        crop.botanicalGroup
       ),
     };
   });
