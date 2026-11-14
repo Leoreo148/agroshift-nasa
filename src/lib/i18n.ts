@@ -94,6 +94,12 @@ export interface Translations {
       solutionText: string;
     }
   >;
+  aiButtonLabel: string;
+  aiLoadingLabel: string;
+  aiTitle: string;
+  aiCheckLabel: string;
+  aiSourceGemini: string;
+  aiSourceFallback: string;
 }
 
 export const T: Record<Lang, Translations> = {
@@ -238,6 +244,12 @@ export const T: Record<Lang, Translations> = {
           "Planting low-stature legumes or cover mixes between orchard rows fixes nitrogen, cuts evaporation, and stops erosion without competing with the crop.",
       },
     },
+    aiButtonLabel: "Generate field transition plan (AI)",
+    aiLoadingLabel: "Generating tailored transition steps...",
+    aiTitle: "Tailored 3-Step Plan for This Soil",
+    aiCheckLabel: "Verify locally",
+    aiSourceGemini: "Gemini 2.5 Flash · Grounded in NASA & FAO data",
+    aiSourceFallback: "Deterministic agronomic summary",
   },
   es: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -380,6 +392,12 @@ export const T: Record<Lang, Translations> = {
           "Sembrar coberturas bajas o leguminosas entre calles protege la humedad del suelo, aporta N y frena erosión sin competir con el frutal.",
       },
     },
+    aiButtonLabel: "Generar plan práctico para esta parcela (IA)",
+    aiLoadingLabel: "Generando pasos de transición con datos NASA...",
+    aiTitle: "Plan práctico de 3 pasos para este suelo",
+    aiCheckLabel: "Verificar en campo",
+    aiSourceGemini: "Gemini 2.5 Flash · Basado en datos NASA y FAO",
+    aiSourceFallback: "Resumen agronómico determinista",
   },
   fr: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -522,6 +540,12 @@ export const T: Record<Lang, Translations> = {
           "Un couvert bas de légumineuses/graminées entre les rangs fixe l'azote, retient l'humidité et freine l'érosion.",
       },
     },
+    aiButtonLabel: "Générer un plan de transition (IA)",
+    aiLoadingLabel: "Génération du plan adapté...",
+    aiTitle: "Plan pratique en 3 étapes pour ce sol",
+    aiCheckLabel: "À vérifier sur place",
+    aiSourceGemini: "Gemini 2.5 Flash · Basé sur données NASA & FAO",
+    aiSourceFallback: "Synthèse agronomique déterministe",
   },
   pt: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -664,5 +688,11 @@ export const T: Record<Lang, Translations> = {
           "Plantar leguminosas baixas ou coberturas entre as linhas fixa N, retém umidade e contém erosão sem competir com a frutífera.",
       },
     },
+    aiButtonLabel: "Gerar plano prático para esta área (IA)",
+    aiLoadingLabel: "Gerando passos de transição com dados NASA...",
+    aiTitle: "Plano prático em 3 passos para este solo",
+    aiCheckLabel: "Verificar no campo",
+    aiSourceGemini: "Gemini 2.5 Flash · Baseado em dados NASA e FAO",
+    aiSourceFallback: "Resumo agronômico determinístico",
   },
 };

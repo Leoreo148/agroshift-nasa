@@ -19,6 +19,7 @@ import {
   Repeat,
   Award,
   Globe,
+  Sparkles,
 } from "lucide-react";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 import {
@@ -35,6 +36,7 @@ import {
 } from "@/lib/rotations";
 import { LANG_LABELS, T, type Lang } from "@/lib/i18n";
 import type { Forecast7d, HistoryYear } from "@/app/api/climate/route";
+import type { AdvisorResponse } from "@/app/api/ai-advisor/route";
 
 const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ssr: false,
@@ -94,6 +96,8 @@ export default function HomePage() {
   const [currentCropType, setCurrentCropType] = useState<CurrentCropType>(
     FARM_PRESETS[0].defaultCropType
   );
+  const [aiPlan, setAiPlan] = useState<AdvisorResponse | null>(null);
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.language) {
@@ -134,6 +138,10 @@ export default function HomePage() {
       active = false;
     };
   }, [lat, lon]);
+
+  useEffect(() => {
+    setAiPlan(null);
+  }, [lat, lon, priority, currentCropType, lang]);
 
   function choosePreset(preset: FarmPreset) {
     setSelectedPreset(preset);
@@ -891,6 +899,91 @@ export default function HomePage() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {!loading && climate && agroZone && rotations.length > 0 && (
+          <div className="mt-5 rounded-2xl border border-indigo-500/30 bg-indigo-500/5 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-indigo-300">
+                <Sparkles className="h-4 w-4" />
+                {t.aiTitle}
+              </div>
+              <button
+                type="button"
+                disabled={aiLoading}
+                onClick={async () => {
+                  setAiLoading(true);
+                  try {
+                    const res = await fetch("/api/ai-advisor", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        lat,
+                        lon,
+                        agroZoneLabel: t.zones[agroZone],
+                        lang,
+                        priority,
+                        currentCropType,
+                        climate,
+                        trend5y,
+                        topRotations: rotations.slice(0, 3).map((r) => ({
+                          name: r.name,
+                          scientificName: r.scientificName,
+                          matchScore: r.matchScore,
+                          reason: r.reason,
+                          pestBreakBenefit: r.pestBreakBenefit,
+                          tradeOff: r.tradeOff,
+                        })),
+                      }),
+                    });
+                    if (res.ok) {
+                      const json = (await res.json()) as AdvisorResponse;
+                      setAiPlan(json);
+                    }
+                  } finally {
+                    setAiLoading(false);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t.aiLoadingLabel}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {t.aiButtonLabel}
+                  </>
+                )}
+              </button>
+            </div>
+
+            {aiPlan && (
+              <div className="mt-3 space-y-2 border-t border-indigo-500/20 pt-3 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium text-slate-200">
+                    {aiPlan.diagnosisSummary}
+                  </p>
+                  <span className="rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-medium text-indigo-300">
+                    {aiPlan.source === "gemini-2.5-flash"
+                      ? t.aiSourceGemini
+                      : t.aiSourceFallback}
+                  </span>
+                </div>
+                <ol className="list-decimal space-y-1 pl-5 text-slate-300">
+                  {aiPlan.actionSteps.map((step, idx) => (
+                    <li key={idx}>{step}</li>
+                  ))}
+                </ol>
+                <p className="pt-1 text-[11px] text-amber-300">
+                  <span className="font-semibold">{t.aiCheckLabel}:</span>{" "}
+                  {aiPlan.localCheck}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </section>
