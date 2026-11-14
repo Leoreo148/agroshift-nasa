@@ -471,3 +471,94 @@ export function buildFieldDiagnostics(
 
   return { cards, headline };
 }
+
+export interface HistoryPoint {
+  year: number;
+  tempAvgC: number;
+  rainMmYear: number;
+  soilWetness: number;
+}
+
+export interface Trend5ySummary {
+  level: RiskLevel;
+  badge: string;
+  explanation: string;
+  tempDeltaC: number;
+  soilWetnessDeltaPct: number;
+  rainDeltaPct: number;
+}
+
+export function analyzeTrend5y(
+  history: HistoryPoint[],
+  lang: Lang
+): Trend5ySummary | null {
+  if (history.length < 4) return null;
+
+  const early = history.slice(0, 2);
+  const recent = history.slice(-2);
+
+  const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+  const tEarly = avg(early.map((x) => x.tempAvgC));
+  const tRecent = avg(recent.map((x) => x.tempAvgC));
+  const wEarly = avg(early.map((x) => x.soilWetness));
+  const wRecent = avg(recent.map((x) => x.soilWetness));
+  const rEarly = avg(early.map((x) => x.rainMmYear));
+  const rRecent = avg(recent.map((x) => x.rainMmYear));
+
+  const tempDeltaC = Number((tRecent - tEarly).toFixed(1));
+  const soilWetnessDeltaPct = Math.round((wRecent - wEarly) * 100);
+  const rainDeltaPct =
+    rEarly > 10 ? Math.round(((rRecent - rEarly) / rEarly) * 100) : 0;
+
+  const isWarming = tempDeltaC >= 0.5;
+  const isDrying = soilWetnessDeltaPct <= -3 || rainDeltaPct <= -12;
+
+  const level: RiskLevel =
+    isWarming && isDrying ? "alert" : isWarming || isDrying ? "warn" : "good";
+
+  const signT = tempDeltaC >= 0 ? `+${tempDeltaC}` : `${tempDeltaC}`;
+  const signW =
+    soilWetnessDeltaPct >= 0
+      ? `+${soilWetnessDeltaPct}`
+      : `${soilWetnessDeltaPct}`;
+  const signR = rainDeltaPct >= 0 ? `+${rainDeltaPct}` : `${rainDeltaPct}`;
+
+  const badges: Record<Lang, Record<RiskLevel, string>> = {
+    en: {
+      alert: "Warming & drying trend",
+      warn: isDrying ? "Progressive drying signal" : "Warming trend",
+      good: "Stable 5-year trend",
+    },
+    es: {
+      alert: "Tendencia cálida y seca",
+      warn: isDrying ? "Señal de secado progresivo" : "Tendencia de calentamiento",
+      good: "Tendencia estable (5 años)",
+    },
+    fr: {
+      alert: "Tendance chaude et sèche",
+      warn: isDrying ? "Assèchement progressif" : "Tendance au réchauffement",
+      good: "Tendance stable (5 ans)",
+    },
+    pt: {
+      alert: "Tendência quente e seca",
+      warn: isDrying ? "Sinal de secagem progressiva" : "Tendência de aquecimento",
+      good: "Tendência estável (5 anos)",
+    },
+  };
+
+  const explanations: Record<Lang, string> = {
+    en: `2024–2025 vs 2021–2022: temp ${signT} °C, rainfall ${signR}%, soil wetness (GWETTOP) ${signW} pts.`,
+    es: `2024–2025 vs 2021–2022: temp ${signT} °C, lluvia ${signR}%, humedad superficial (GWETTOP) ${signW} pts.`,
+    fr: `2024–2025 vs 2021–2022 : temp ${signT} °C, pluie ${signR}%, humidité du sol (GWETTOP) ${signW} pts.`,
+    pt: `2024–2025 vs 2021–2022: temp ${signT} °C, chuva ${signR}%, umidade do solo (GWETTOP) ${signW} pts.`,
+  };
+
+  return {
+    level,
+    badge: badges[lang][level],
+    explanation: explanations[lang],
+    tempDeltaC,
+    soilWetnessDeltaPct,
+    rainDeltaPct,
+  };
+}

@@ -21,6 +21,13 @@ function sumValid(obj: Record<string, number> | undefined): number | null {
   return vals.reduce((a, b) => a + b, 0);
 }
 
+export interface HistoryYear {
+  year: number;
+  tempAvgC: number;
+  rainMmYear: number;
+  soilWetness: number;
+}
+
 export interface Forecast7d {
   source: "Meteomatics";
   minTempC: number;
@@ -150,13 +157,21 @@ export async function GET(req: NextRequest) {
     `?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
     `&hourly=soil_moisture_0_to_7cm&forecast_days=1&timezone=auto`;
 
+  const historyUrl =
+    `https://power.larc.nasa.gov/api/temporal/monthly/point` +
+    `?parameters=T2M,PRECTOTCORR,GWETTOP` +
+    `&community=AG&longitude=${lon.toFixed(4)}&latitude=${lat.toFixed(4)}` +
+    `&start=2021&end=2025&format=JSON`;
+
   try {
-    const [nasaRes, elevRes, soilRes, forecastRes] = await Promise.allSettled([
-      fetch(nasaUrl, { next: { revalidate: 3600 } }),
-      fetch(elevUrl, { next: { revalidate: 86400 } }),
-      fetch(soilUrl, { next: { revalidate: 3600 } }),
-      fetchMeteomaticsForecast(lat, lon),
-    ]);
+    const [nasaRes, elevRes, soilRes, forecastRes, historyRes] =
+      await Promise.allSettled([
+        fetch(nasaUrl, { next: { revalidate: 3600 } }),
+        fetch(elevUrl, { next: { revalidate: 86400 } }),
+        fetch(soilUrl, { next: { revalidate: 3600 } }),
+        fetchMeteomaticsForecast(lat, lon),
+        fetch(historyUrl, { next: { revalidate: 86400 } }),
+      ]);
 
     if (nasaRes.status !== "fulfilled" || !nasaRes.value.ok) {
       const code = nasaRes.status === "fulfilled" ? nasaRes.value.status : "red";
@@ -223,6 +238,41 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const history5y: HistoryYear[] = [];
+    if (historyRes.status === "fulfilled" && historyRes.value.ok) {
+      const hJson = await historyRes.value.json();
+      const hp = hJson?.properties?.parameter ?? {};
+      const readYearVal = (
+        paramObj: Record<string, number> | undefined,
+        yr: number
+      ): number | null => {
+        if (!paramObj) return null;
+        const annual = paramObj[`${yr}13`];
+        if (typeof annual === "number" && annual > -900) return annual;
+        const months: number[] = [];
+        for (let m = 1; m <= 12; m++) {
+          const val = paramObj[`${yr}${String(m).padStart(2, "0")}`];
+          if (typeof val === "number" && val > -900) months.push(val);
+        }
+        if (months.length === 0) return null;
+        return months.reduce((a, b) => a + b, 0) / months.length;
+      };
+
+      for (const yr of [2021, 2022, 2023, 2024, 2025]) {
+        const t = readYearVal(hp.T2M, yr);
+        const p = readYearVal(hp.PRECTOTCORR, yr);
+        const w = readYearVal(hp.GWETTOP, yr);
+        if (t !== null && p !== null && w !== null) {
+          history5y.push({
+            year: yr,
+            tempAvgC: Number(t.toFixed(1)),
+            rainMmYear: Math.round(p * 365),
+            soilWetness: Number(w.toFixed(2)),
+          });
+        }
+      }
+    }
+
     return NextResponse.json({
       source: "NASA POWER (AG) + DEM/SM",
       lat: Number(lat.toFixed(4)),
@@ -245,6 +295,7 @@ export async function GET(req: NextRequest) {
       },
       forecast:
         forecastRes.status === "fulfilled" ? forecastRes.value : null,
+      history5y,
     });
   } catch (err) {
     return NextResponse.json(

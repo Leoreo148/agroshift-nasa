@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 import {
+  analyzeTrend5y,
   buildFieldDiagnostics,
   detectAgroZone,
   type ClimateMetrics,
@@ -32,7 +33,7 @@ import {
   type FarmerPriority,
 } from "@/lib/rotations";
 import { LANG_LABELS, T, type Lang } from "@/lib/i18n";
-import type { Forecast7d } from "@/app/api/climate/route";
+import type { Forecast7d, HistoryYear } from "@/app/api/climate/route";
 
 const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ssr: false,
@@ -84,6 +85,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [climate, setClimate] = useState<ClimateMetrics | null>(null);
   const [forecast, setForecast] = useState<Forecast7d | null>(null);
+  const [history5y, setHistory5y] = useState<HistoryYear[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState<boolean>(false);
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
@@ -115,6 +117,7 @@ export default function HomePage() {
         if (!active) return;
         setClimate(data.summary);
         setForecast(data.forecast ?? null);
+        setHistory5y(data.history5y ?? []);
         setLoading(false);
       })
       .catch((err) => {
@@ -199,6 +202,8 @@ export default function HomePage() {
   const diagnostic = climate
     ? buildFieldDiagnostics(climate, lang, selectedPreset?.slopePct)
     : null;
+
+  const trend5y = analyzeTrend5y(history5y, lang);
 
   const rotations =
     climate && agroZone
@@ -552,6 +557,58 @@ export default function HomePage() {
               })}
             </div>
 
+            {history5y.length > 0 && (
+              <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+                    {t.historyTitle}
+                  </h3>
+                  {trend5y && (
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${LEVEL_STYLES[trend5y.level].badge}`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${LEVEL_STYLES[trend5y.level].dot}`}
+                      />
+                      {trend5y.badge}
+                    </span>
+                  )}
+                </div>
+                {trend5y && (
+                  <p className="mb-3 text-[11px] text-slate-300">
+                    {trend5y.explanation}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+                  {history5y.map((yr) => (
+                    <div
+                      key={yr.year}
+                      className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-2.5 text-xs"
+                    >
+                      <div className="font-semibold text-white">{yr.year}</div>
+                      <div className="mt-1 text-[11px] text-slate-300">
+                        {yr.tempAvgC} °C · {yr.rainMmYear} mm
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
+                        <span>GWETTOP</span>
+                        <span className="text-sky-300">
+                          {Math.round(yr.soilWetness * 100)}%
+                        </span>
+                      </div>
+                      <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div
+                          className="h-full rounded-full bg-sky-400"
+                          style={{
+                            width: `${Math.min(100, Math.round(yr.soilWetness * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {showTechDetails && (
               <div className="mt-5 grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/80 p-4 text-xs text-slate-300 sm:grid-cols-5">
                 <div>
@@ -649,6 +706,27 @@ export default function HomePage() {
                 {opt.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="mb-5 grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-300">
+              {t.problemTitle}
+            </h3>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-slate-300">
+              {t.problemPoints.map((pt, i) => (
+                <li key={i}>{pt}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
+              {t.solutionTitle}
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-300">
+              {t.solutionText}
+            </p>
           </div>
         </div>
 
@@ -785,16 +863,26 @@ export default function HomePage() {
         )}
       </section>
 
-      <footer className="rounded-3xl border border-slate-800/80 bg-slate-900/40 p-5 sm:p-6">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-          {t.methodTitle}
-        </h3>
-        <ul className="mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-400">
-          {t.methodItems.map((item, idx) => (
-            <li key={idx}>{item}</li>
-          ))}
-        </ul>
-        <p className="mt-4 border-t border-slate-800/80 pt-3 text-xs font-medium text-slate-300">
+      <footer className="space-y-4 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-5 sm:p-6">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+            {t.districtTitle}
+          </h3>
+          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
+            {t.districtText}
+          </p>
+        </div>
+        <div className="border-t border-slate-800/80 pt-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            {t.methodTitle}
+          </h3>
+          <ul className="mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-400">
+            {t.methodItems.map((item, idx) => (
+              <li key={idx}>{item}</li>
+            ))}
+          </ul>
+        </div>
+        <p className="border-t border-slate-800/80 pt-3 text-xs font-medium text-slate-300">
           {t.farmerDisclaimer}
         </p>
       </footer>

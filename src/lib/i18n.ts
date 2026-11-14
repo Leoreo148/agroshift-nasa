@@ -73,6 +73,13 @@ export interface Translations {
   methodItems: string[];
   farmerDisclaimer: string;
   forecast7dLabel: string;
+  historyTitle: string;
+  problemTitle: string;
+  problemPoints: string[];
+  solutionTitle: string;
+  solutionText: string;
+  districtTitle: string;
+  districtText: string;
 }
 
 export const T: Record<Lang, Translations> = {
@@ -149,6 +156,19 @@ export const T: Record<Lang, Translations> = {
     farmerDisclaimer:
       "Decision-support notice: This tool helps identify climate patterns and crop rotation possibilities from open NASA & FAO data, and does not replace the farmer's judgment or local agricultural experience.",
     forecast7dLabel: "Next 7 days (Meteomatics)",
+    historyTitle: "5-Year Climate & Soil Wetness Trend (NASA POWER 2021–2025)",
+    problemTitle: "The Problem: Repeating the same crop here (Monoculture)",
+    problemPoints: [
+      "Higher fertilizer cost: continuous cereals/tubers extract nitrogen with 0 kg N/ha biological fixation.",
+      "Soil loss & erosion: repeated tillage keeps high RUSLE cover exposure (C ≈ 0.35–0.40).",
+      "Pest & disease buildup: same-family crops feed nematodes, root fungi, and adapted weeds.",
+    ],
+    solutionTitle: "The Solution for this field",
+    solutionText:
+      "Rotating with the top-ranked crops below restores nitrogen naturally (BNF), cuts erosion risk, and breaks pest cycles under your local climate.",
+    districtTitle: "District & Organization Scope (How to detect non-rotated areas)",
+    districtText:
+      "Cooperatives and local agencies combine 5-year soil wetness trends (NASA POWER GWETTOP) with multi-year vegetation indices (Sentinel-2 / MODIS NDVI) to separate stable perennial orchards from annual fields losing vigor or failing to rotate.",
   },
   es: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -223,6 +243,19 @@ export const T: Record<Lang, Translations> = {
     farmerDisclaimer:
       "Herramienta de apoyo: Ayuda a identificar patrones climáticos y posibilidades de rotación con datos abiertos de NASA y FAO, pero no sustituye el criterio del agricultor ni la experiencia agrícola local.",
     forecast7dLabel: "Próximos 7 días (Meteomatics)",
+    historyTitle: "Tendencia histórica 5 años: clima y humedad del suelo (NASA POWER 2021–2025)",
+    problemTitle: "El Problema: Repetir el mismo cultivo aquí (Monocultivo)",
+    problemPoints: [
+      "Más gasto en fertilizante: sembrar siempre maíz, papa o cereal agota el nitrógeno (0 kg N/ha fijados).",
+      "Pérdida de suelo fértil: mantener el suelo expuesto eleva el factor de erosión RUSLE (C ≈ 0.35–0.40).",
+      "Entrada de plagas y hongos: repetir la misma familia multiplica nemátodos, pudriciones y malezas.",
+    ],
+    solutionTitle: "La Solución para este suelo",
+    solutionText:
+      "Rotar con las opciones recomendadas abajo aporta nitrógeno natural (BNF), protege el suelo contra erosión y corta el ciclo de plagas según tu clima real.",
+    districtTitle: "Alcance para distritos y organizaciones (Detectar áreas sin rotación)",
+    districtText:
+      "Cooperativas y municipios cruzan la tendencia de humedad superficial (NASA POWER GWETTOP) con series históricas de NDVI/EVI (Sentinel-2 / MODIS) para distinguir frutales perennes estables de lotes anuales que no rotan y pierden vigor o suelo.",
   },
   fr: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -297,6 +330,19 @@ export const T: Record<Lang, Translations> = {
     farmerDisclaimer:
       "Outil d'aide à la décision : cette application aide à identifier des tendances climatiques et des possibilités de rotation via les données ouvertes NASA/FAO, sans remplacer le jugement de l'agriculteur ni l'expérience locale.",
     forecast7dLabel: "7 prochains jours (Meteomatics)",
+    historyTitle: "Tendance sur 5 ans : climat et humidité du sol (NASA POWER 2021–2025)",
+    problemTitle: "Le Problème : Répéter la même culture ici (Monoculture)",
+    problemPoints: [
+      "Coût d'engrais accru : les céréales continues épuisent l'azote sans fixation biologique (0 kg N/ha).",
+      "Érosion et perte de sol : le travail répété maintient un facteur RUSLE élevé (C ≈ 0,35–0,40).",
+      "Pression des ravageurs : la même famille botanique entretient nématodes et maladies racinaires.",
+    ],
+    solutionTitle: "La Solution pour ce sol",
+    solutionText:
+      "La rotation avec les cultures classées ci-dessous restaure l'azote (BNF), réduit l'érosion et coupe les cycles parasitaires.",
+    districtTitle: "Portée districts & organisations (Détecter les zones sans rotation)",
+    districtText:
+      "Les coopératives croisent l'humidité du sol sur 5 ans (NASA POWER GWETTOP) avec les séries NDVI/EVI (Sentinel-2 / MODIS) pour distinguer les vergers pérennes stables des parcelles annuelles en perte de vigueur.",
   },
   pt: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -371,5 +417,18 @@ export const T: Record<Lang, Translations> = {
     farmerDisclaimer:
       "Ferramenta de apoio: ajuda a identificar padrões climáticos e possibilidades de rotação com dados abertos da NASA e FAO, sem substituir o critério do agricultor nem a experiência agrícola local.",
     forecast7dLabel: "Próximos 7 dias (Meteomatics)",
+    historyTitle: "Tendência de 5 anos: clima e umidade do solo (NASA POWER 2021–2025)",
+    problemTitle: "O Problema: Repetir a mesma cultura aqui (Monocultivo)",
+    problemPoints: [
+      "Mais gasto com adubo: cereais contínuos esgotam o nitrogênio sem fixação biológica (0 kg N/ha).",
+      "Perda de solo fértil: exposição contínua mantém alto fator RUSLE de erosão (C ≈ 0,35–0,40).",
+      "Aumento de pragas e doenças: repetir a mesma família multiplica nematoides e fungos de solo.",
+    ],
+    solutionTitle: "A Solução para este solo",
+    solutionText:
+      "Rotacionar com as opções abaixo devolve nitrogênio natural (BNF), reduz a erosão e quebra o ciclo de pragas no seu clima real.",
+    districtTitle: "Alcance para distritos e organizações (Detectar áreas sem rotação)",
+    districtText:
+      "Cooperativas e órgãos locais cruzam a umidade do solo de 5 anos (NASA POWER GWETTOP) com séries NDVI/EVI (Sentinel-2 / MODIS) para diferenciar pomares perenes estáveis de áreas anuais sem rotação perdendo vigor.",
   },
 };
