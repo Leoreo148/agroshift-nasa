@@ -12,8 +12,17 @@ import {
   Droplets,
   Loader2,
   CheckCircle2,
+  Mountain,
+  ShieldAlert,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
+import {
+  buildFieldDiagnostics,
+  type ClimateMetrics,
+  type RiskLevel,
+} from "@/lib/diagnostics";
 
 const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ssr: false,
@@ -24,14 +33,33 @@ const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ),
 });
 
-interface ClimateSummary {
-  tempAvgC: number | null;
-  tempMaxC: number | null;
-  tempMinC: number | null;
-  humidityPct: number | null;
-  rain30dMm: number | null;
-  solarKwhM2Day: number | null;
-}
+const LEVEL_STYLES: Record<
+  RiskLevel,
+  { border: string; badge: string; dot: string }
+> = {
+  good: {
+    border: "border-emerald-500/30 bg-emerald-500/5",
+    badge: "bg-emerald-500/15 text-emerald-300",
+    dot: "bg-emerald-400",
+  },
+  warn: {
+    border: "border-amber-500/30 bg-amber-500/5",
+    badge: "bg-amber-500/15 text-amber-300",
+    dot: "bg-amber-400",
+  },
+  alert: {
+    border: "border-rose-500/35 bg-rose-500/5",
+    badge: "bg-rose-500/15 text-rose-300",
+    dot: "bg-rose-400",
+  },
+};
+
+const CARD_ICONS = {
+  water: Droplets,
+  heat: Thermometer,
+  health: Sprout,
+  erosion: Mountain,
+};
 
 export default function HomePage() {
   const [selectedPreset, setSelectedPreset] = useState<FarmPreset | null>(
@@ -43,9 +71,10 @@ export default function HomePage() {
   const [lonInput, setLonInput] = useState<string>(String(FARM_PRESETS[0].lon));
 
   const [loading, setLoading] = useState<boolean>(true);
-  const [climate, setClimate] = useState<ClimateSummary | null>(null);
+  const [climate, setClimate] = useState<ClimateMetrics | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState<boolean>(false);
+  const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
 
   useEffect(() => {
     let active = true;
@@ -139,9 +168,13 @@ export default function HomePage() {
     ? `${selectedPreset.name} (${selectedPreset.region})`
     : `Parcela personalizada (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
 
+  const diagnostic = climate
+    ? buildFieldDiagnostics(climate, selectedPreset?.slopePct)
+    : null;
+
   return (
-    <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
-      <header className="mb-8 flex flex-col gap-2 border-b border-slate-800/90 pb-6">
+    <main className="mx-auto max-w-6xl space-y-8 px-5 py-8 sm:px-8 sm:py-10">
+      <header className="flex flex-col gap-2 border-b border-slate-800/90 pb-6">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
           <Sprout className="h-3.5 w-3.5" />
           NASA Space Apps 2026 · Field Shift
@@ -150,8 +183,8 @@ export default function HomePage() {
           AgroShift NASA
         </h1>
         <p className="max-w-2xl text-sm text-slate-300 sm:text-base">
-          Elige una parcela en un clic y consulta al instante su clima real con
-          satélites de la NASA, sin configuraciones complicadas.
+          Elige una parcela, entiende sus riesgos en lenguaje simple y descubre
+          qué rotación de cultivos la protege mejor.
         </p>
       </header>
 
@@ -182,7 +215,6 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* 3 Parcelas rápidas */}
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {FARM_PRESETS.map((preset) => {
             const isSelected = selectedPreset?.id === preset.id;
@@ -222,7 +254,6 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* Mapa + Datos en vivo de la parcela seleccionada */}
         <div className="grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-7">
             <FarmMap
@@ -244,11 +275,10 @@ export default function HomePage() {
               </h3>
               <p className="mt-1 text-xs text-slate-400">
                 {selectedPreset
-                  ? `Cultivo actual: ${selectedPreset.currentCrop} · Pendiente estimada: ${selectedPreset.slopePct}%`
+                  ? `Cultivo actual: ${selectedPreset.currentCrop}`
                   : "Ubicación elegida libremente en el mapa."}
               </p>
 
-              {/* Resumen climático real de NASA POWER */}
               <div className="mt-5">
                 <div className="mb-2.5 flex items-center justify-between">
                   <span className="text-xs font-medium text-slate-300">
@@ -333,12 +363,11 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Coordenadas manuales discretas */}
             <form
               onSubmit={applyManualCoords}
               className="mt-2 flex flex-wrap items-end gap-2 border-t border-slate-800 pt-3"
             >
-              <div className="flex-1 min-w-[90px]">
+              <div className="min-w-[90px] flex-1">
                 <label className="block text-[10px] uppercase tracking-wide text-slate-500">
                   Latitud
                 </label>
@@ -349,7 +378,7 @@ export default function HomePage() {
                   className="mt-0.5 w-full rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
                 />
               </div>
-              <div className="flex-1 min-w-[90px]">
+              <div className="min-w-[90px] flex-1">
                 <label className="block text-[10px] uppercase tracking-wide text-slate-500">
                   Longitud
                 </label>
@@ -369,6 +398,127 @@ export default function HomePage() {
             </form>
           </div>
         </div>
+      </section>
+
+      {/* PASO 2: DIAGNÓSTICO SIMPLE (SEMÁFORO SIN TECNICISMOS) */}
+      <section className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 sm:p-7">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+              Paso 2 de 3
+            </span>
+            <h2 className="text-xl font-semibold text-white">
+              ¿Cómo está tu campo hoy?
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowTechDetails((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-1.5 text-xs text-slate-300 transition hover:border-slate-700 hover:text-white"
+          >
+            {showTechDetails ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+            Ver datos científicos
+          </button>
+        </div>
+
+        {loading || !diagnostic ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/50 p-5 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+            Analizando riesgos climáticos y del terreno...
+          </div>
+        ) : (
+          <>
+            <div className="mb-5 flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
+              <p className="text-sm font-medium text-slate-200">
+                {diagnostic.headline}
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {diagnostic.cards.map((card) => {
+                const style = LEVEL_STYLES[card.level];
+                const Icon = CARD_ICONS[card.id];
+                return (
+                  <div
+                    key={card.id}
+                    className={`flex flex-col justify-between rounded-2xl border p-4 ${style.border}`}
+                  >
+                    <div>
+                      <div className="mb-3 flex items-center justify-between">
+                        <Icon className="h-5 w-5 text-slate-200" />
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${style.badge}`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${style.dot}`}
+                          />
+                          {card.statusLabel}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-semibold text-white">
+                        {card.title}
+                      </h3>
+                      <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
+                        {card.explanation}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {showTechDetails && (
+              <div className="mt-5 grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/80 p-4 text-xs text-slate-300 sm:grid-cols-4">
+                <div>
+                  <span className="block text-[11px] text-slate-500">
+                    Elevación (DEM / SRTM)
+                  </span>
+                  <span className="font-semibold text-white">
+                    {climate?.elevationM !== null
+                      ? `${climate?.elevationM} m s.n.m.`
+                      : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[11px] text-slate-500">
+                    Pendiente estimada
+                  </span>
+                  <span className="font-semibold text-white">
+                    {climate?.slopePct !== null
+                      ? `${climate?.slopePct}%`
+                      : `${selectedPreset?.slopePct ?? "—"}%`}
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[11px] text-slate-500">
+                    Humedad suelo (0–7 cm)
+                  </span>
+                  <span className="font-semibold text-white">
+                    {climate?.soilMoistureM3 !== null
+                      ? `${climate?.soilMoistureM3} m³/m³`
+                      : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="block text-[11px] text-slate-500">
+                    Demanda evaporativa (ET₀)
+                  </span>
+                  <span className="font-semibold text-white">
+                    {climate?.et0MmDay !== null
+                      ? `${climate?.et0MmDay} mm/día`
+                      : "—"}
+                  </span>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </section>
     </main>
   );

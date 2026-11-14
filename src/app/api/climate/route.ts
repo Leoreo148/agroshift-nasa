@@ -28,11 +28,18 @@ export async function GET(req: NextRequest) {
   const lat = Number(latStr);
   const lon = Number(lonStr);
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    lat < -90 ||
+    lat > 90 ||
+    lon < -180 ||
+    lon > 180
+  ) {
     return NextResponse.json({ error: "Coordenadas inválidas" }, { status: 400 });
   }
 
-  // NASA POWER suele tener un desfase de 2-5 días en datos recientes: consultamos una ventana de 35 días hasta hace 3 días
+  // NASA POWER suele tener un desfase de 2-5 días en datos recientes
   const endDate = new Date(Date.now() - 3 * 86400 * 1000);
   const startDate = new Date(endDate.getTime() - 30 * 86400 * 1000);
 
@@ -44,16 +51,34 @@ export async function GET(req: NextRequest) {
     `&start=${formatDateYYYYMMDD(startDate)}&end=${formatDateYYYYMMDD(endDate)}` +
     `&format=JSON`;
 
+  // Muestreo en cruz (~110 m) para estimar elevación y pendiente real del terreno
+  const delta = 0.001;
+  const elevUrl =
+    `https://api.open-meteo.com/v1/elevation` +
+    `?latitude=${lat.toFixed(4)},${(lat + delta).toFixed(4)},${(lat - delta).toFixed(4)},${lat.toFixed(4)},${lat.toFixed(4)}` +
+    `&longitude=${lon.toFixed(4)},${lon.toFixed(4)},${lon.toFixed(4)},${(lon + delta).toFixed(4)},${(lon - delta).toFixed(4)}`;
+
+  const soilUrl =
+    `https://api.open-meteo.com/v1/forecast` +
+    `?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
+    `&daily=et0_fao_evapotranspiration&hourly=soil_moisture_0_to_7cm&forecast_days=1&timezone=auto`;
+
   try {
-    const res = await fetch(nasaUrl, { next: { revalidate: 3600 } });
-    if (!res.ok) {
+    const [nasaRes, elevRes, soilRes] = await Promise.allSettled([
+      fetch(nasaUrl, { next: { revalidate: 3600 } }),
+      fetch(elevUrl, { next: { revalidate: 86400 } }),
+      fetch(soilUrl, { next: { revalidate: 3600 } }),
+    ]);
+
+    if (nasaRes.status !== "fulfilled" || !nasaRes.value.ok) {
+      const code = nasaRes.status === "fulfilled" ? nasaRes.value.status : "red";
       return NextResponse.json(
-        { error: `NASA POWER respondió ${res.status}` },
+        { error: `NASA POWER respondió ${code}` },
         { status: 502 }
       );
     }
 
-    const json = await res.json();
+    const json = await nasaRes.value.json();
     const params = json?.properties?.parameter ?? {};
 
     const tempAvg = avgValid(params.T2M);
@@ -63,8 +88,40 @@ export async function GET(req: NextRequest) {
     const rainTotalMm = sumValid(params.PRECTOTCORR);
     const solarAvg = avgValid(params.ALLSKY_SFC_SW_DWN);
 
+    let elevationM: number | null = null;
+    let slopePct: number | null = null;
+    if (elevRes.status === "fulfilled" && elevRes.value.ok) {
+      const elevJson = await elevRes.value.json();
+      const e: number[] = elevJson?.elevation ?? [];
+      if (e.length >= 5 && e.every((v) => typeof v === "number")) {
+        elevationM = Math.round(e[0]);
+        // ~222 m entre puntos opuestos (2 * 0.001 grados)
+        const distNS = 222;
+        const distEW = Math.max(80, 222 * Math.cos((lat * Math.PI) / 180));
+        const dzNS = (e[1] - e[2]) / distNS;
+        const dzEW = (e[3] - e[4]) / distEW;
+        slopePct = Number((Math.sqrt(dzNS * dzNS + dzEW * dzEW) * 100).toFixed(1));
+      }
+    }
+
+    let soilMoistureM3: number | null = null;
+    let et0MmDay: number | null = null;
+    if (soilRes.status === "fulfilled" && soilRes.value.ok) {
+      const soilJson = await soilRes.value.json();
+      const smArr: number[] = soilJson?.hourly?.soil_moisture_0_to_7cm ?? [];
+      const validSm = smArr.filter((v) => typeof v === "number");
+      if (validSm.length > 0) {
+        const smMean = validSm.reduce((a, b) => a + b, 0) / validSm.length;
+        soilMoistureM3 = Number(smMean.toFixed(3));
+      }
+      const et0Arr: number[] = soilJson?.daily?.et0_fao_evapotranspiration ?? [];
+      if (typeof et0Arr[0] === "number") {
+        et0MmDay = Number(et0Arr[0].toFixed(2));
+      }
+    }
+
     return NextResponse.json({
-      source: "NASA POWER (AG)",
+      source: "NASA POWER (AG) + DEM/ERA5",
       lat: Number(lat.toFixed(4)),
       lon: Number(lon.toFixed(4)),
       period: {
@@ -78,6 +135,10 @@ export async function GET(req: NextRequest) {
         humidityPct: humidityAvg !== null ? Math.round(humidityAvg) : null,
         rain30dMm: rainTotalMm !== null ? Number(rainTotalMm.toFixed(1)) : null,
         solarKwhM2Day: solarAvg !== null ? Number(solarAvg.toFixed(2)) : null,
+        elevationM,
+        slopePct,
+        soilMoistureM3,
+        et0MmDay,
       },
     });
   } catch (err) {
