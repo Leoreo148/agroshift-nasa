@@ -5,98 +5,119 @@ export type FarmerPriority = "water" | "soil" | "climate" | "erosion";
 export interface CropOption {
   id: string;
   name: string;
+  scientificName: string;
   category: string;
-  waterNeedLevel: "Muy bajo" | "Bajo" | "Moderado" | "Alto";
-  waterDemandMmCycle: number;
-  minTempC: number;
-  maxTempC: number;
-  nitrogenFixer: boolean;
-  erosionControl: number; // 1 a 100
-  soilHealthBoost: number; // 1 a 100
+  /** Requerimiento hídrico estacional FAO-56 (mm/ciclo): [min, max] */
+  waterRangeMm: [number, number];
+  /** Umbrales térmicos FAO EcoCrop (°C): [T_abs_min, T_opt_min, T_opt_max, T_abs_max] */
+  ecoCropTempC: [number, number, number, number];
+  /** Fijación biológica de nitrógeno estimada (kg N/ha/ciclo) según meta-análisis */
+  bnfKgNHa: [number, number];
+  /** Factor C aproximado en RUSLE (menor = protege más contra la erosión, suelo desnudo = 1.0) */
+  rusleCFactor: number;
   pestBreakBenefit: string;
   tradeOff: string;
+  reference: string;
 }
 
 export interface EvaluatedCrop extends CropOption {
-  matchScore: number; // 0 a 100
-  waterSavingScore: number; // 0 a 100
-  climateFitScore: number; // 0 a 100
-  soilScore: number; // 0 a 100
+  matchScore: number;
+  waterSavingScore: number;
+  climateFitScore: number;
+  soilScore: number;
   reason: string;
 }
 
 const CROP_CATALOG: CropOption[] = [
   {
-    id: "sorghum",
-    name: "Sorgo granífero / forrajero",
-    category: "Cereal resistente a sequía",
-    waterNeedLevel: "Bajo",
-    waterDemandMmCycle: 380,
-    minTempC: 10,
-    maxTempC: 38,
-    nitrogenFixer: false,
-    erosionControl: 68,
-    soilHealthBoost: 60,
-    pestBreakBenefit: "Corta ciclos de nemátodos y hongos de raíz.",
-    tradeOff: "Menor precio por tonelada que hortalizas, pero asegura cosecha con poca agua.",
-  },
-  {
-    id: "legume-bean",
-    name: "Frijol / Pallar (Leguminosa)",
-    category: "Fijador de nitrógeno",
-    waterNeedLevel: "Bajo",
-    waterDemandMmCycle: 340,
-    minTempC: 10,
-    maxTempC: 33,
-    nitrogenFixer: true,
-    erosionControl: 62,
-    soilHealthBoost: 92,
-    pestBreakBenefit: "Rompe plagas de gramíneas y mejora la biología del suelo.",
-    tradeOff: "Sensible a encharcamientos prolongados o heladas fuertes.",
-  },
-  {
     id: "quinoa",
     name: "Quinua",
+    scientificName: "Chenopodium quinoa",
     category: "Grano andino rústico",
-    waterNeedLevel: "Muy bajo",
-    waterDemandMmCycle: 290,
-    minTempC: -2,
-    maxTempC: 30,
-    nitrogenFixer: false,
-    erosionControl: 65,
-    soilHealthBoost: 70,
-    pestBreakBenefit: "Excelente corte sanitario tras papa o maíz.",
-    tradeOff: "No tolera exceso de humedad ni calor extremo sostenido (>32 °C).",
+    waterRangeMm: [300, 500],
+    ecoCropTempC: [-3, 15, 25, 34],
+    bnfKgNHa: [0, 0],
+    rusleCFactor: 0.30,
+    pestBreakBenefit: "Corta ciclos de plagas tras papa o cereales.",
+    tradeOff: "Sensible a calor fuerte (>32–34 °C) durante floración y a encharcamiento.",
+    reference: "FAO EcoCrop · FAO-56 (Allen et al., 1998)",
   },
   {
     id: "cover-oats-vetch",
     name: "Avena + Vicia (Cobertura)",
-    category: "Cultivo de cobertura y abono verde",
-    waterNeedLevel: "Bajo",
-    waterDemandMmCycle: 310,
-    minTempC: 0,
-    maxTempC: 29,
-    nitrogenFixer: true,
-    erosionControl: 95,
-    soilHealthBoost: 96,
-    pestBreakBenefit: "Suprime malezas y protege el suelo contra lluvia erosiva.",
-    tradeOff: "No genera venta directa inmediata, pero ahorra fertilizante y frena erosión.",
+    scientificName: "Avena sativa + Vicia sativa",
+    category: "Cobertura y abono verde",
+    waterRangeMm: [350, 550],
+    ecoCropTempC: [-3, 12, 24, 31],
+    bnfKgNHa: [50, 150],
+    rusleCFactor: 0.12,
+    pestBreakBenefit: "Suprime malezas y reduce la erosión hídrica en >50% frente a suelo desnudo.",
+    tradeOff: "No da grano comercial directo, pero aporta 50–150 kg N/ha y frena erosión.",
+    reference: "FAO EcoCrop · RUSLE (Renard et al.) · BNF Vicia sativa",
+  },
+  {
+    id: "legume-bean",
+    name: "Frijol común (Leguminosa)",
+    scientificName: "Phaseolus vulgaris",
+    category: "Leguminosa de grano",
+    waterRangeMm: [350, 500],
+    ecoCropTempC: [10, 15, 27, 35],
+    bnfKgNHa: [10, 60],
+    rusleCFactor: 0.32,
+    pestBreakBenefit: "Rompe ciclos de plagas de gramíneas (maíz/sorgo).",
+    tradeOff: "Fija menos N (10–60 kg/ha) que coberturas de vicia y es sensible a >30 °C en floración.",
+    reference: "FAO EcoCrop · FAO-56 · Meta-análisis BNF P. vulgaris",
+  },
+  {
+    id: "sorghum",
+    name: "Sorgo",
+    scientificName: "Sorghum bicolor",
+    category: "Cereal tolerante a sequía y calor",
+    waterRangeMm: [450, 650],
+    ecoCropTempC: [12, 20, 34, 42],
+    bnfKgNHa: [0, 0],
+    rusleCFactor: 0.35,
+    pestBreakBenefit: "Corta ciclos de nemátodos y enfermedades de raíz.",
+    tradeOff: "Requiere al menos ~12–15 °C para establecerse; menor precio que hortalizas.",
+    reference: "FAO EcoCrop · FAO-56 (Allen et al., 1998)",
   },
   {
     id: "maize",
     name: "Maíz",
+    scientificName: "Zea mays",
     category: "Cereal de alta demanda",
-    waterNeedLevel: "Alto",
-    waterDemandMmCycle: 560,
-    minTempC: 8,
-    maxTempC: 34,
-    nitrogenFixer: false,
-    erosionControl: 52,
-    soilHealthBoost: 45,
-    pestBreakBenefit: "Aporta abundante rastrojo si se rota después con leguminosas.",
-    tradeOff: "Exige mucha agua y nitrógeno; riesgoso en zonas secas sin riego.",
+    waterRangeMm: [500, 800],
+    ecoCropTempC: [10, 18, 32, 40],
+    bnfKgNHa: [0, 0],
+    rusleCFactor: 0.40,
+    pestBreakBenefit: "Deja alto volumen de rastrojo si se maneja sin quema y en rotación.",
+    tradeOff: "Exige 500–800 mm/ciclo y mayor nitrógeno; vulnerable a erosión en etapas iniciales.",
+    reference: "FAO EcoCrop · FAO-56 · RUSLE C-factor",
   },
 ];
+
+/**
+ * Función trapezoidal estándar de aptitud FAO EcoCrop para temperatura (°C).
+ */
+function ecoCropTempSuitability(
+  tAvg: number,
+  tMin: number,
+  tMax: number,
+  [tAbsMin, tOptMin, tOptMax, tAbsMax]: [number, number, number, number]
+): number {
+  const scoreForTemp = (t: number): number => {
+    if (t <= tAbsMin || t >= tAbsMax) return 0;
+    if (t >= tOptMin && t <= tOptMax) return 100;
+    if (t < tOptMin) return ((t - tAbsMin) / (tOptMin - tAbsMin)) * 100;
+    return ((tAbsMax - t) / (tAbsMax - tOptMax)) * 100;
+  };
+
+  // Combinamos aptitud de la media (60%) con penalización por extremos reales mín/máx (40%)
+  const sAvg = scoreForTemp(tAvg);
+  const sMin = tMin < tAbsMin ? 0 : tMin < tOptMin ? 70 : 100;
+  const sMax = tMax > tAbsMax ? 0 : tMax > tOptMax ? 65 : 100;
+  return Math.max(5, Math.round(sAvg * 0.6 + ((sMin + sMax) / 2) * 0.4));
+}
 
 export function evaluateCropRotations(
   climate: ClimateMetrics,
@@ -105,40 +126,44 @@ export function evaluateCropRotations(
 ): EvaluatedCrop[] {
   const rain30d = climate.rain30dMm ?? 20;
   const eoDay = climate.eoMmDay ?? 4.5;
+  const tAvg = climate.tempAvgC ?? 20;
   const tMin = climate.tempMinC ?? 12;
   const tMax = climate.tempMaxC ?? 26;
   const slope = climate.slopePct ?? fallbackSlopePct ?? 2;
 
-  // Estimación simple de déficit hídrico mensual (mm) usando lluvia 30d vs Eo*30
+  // Demanda evaporativa mensual Eo (Penman 1948) frente a lluvia mensual
   const monthlyEo = eoDay * 30;
-  const drynessRatio = Math.min(1.5, Math.max(0.2, monthlyEo / Math.max(25, rain30d + 25)));
+  const waterDeficitRatio = Math.min(1.6, Math.max(0.3, monthlyEo / Math.max(25, rain30d + 25)));
 
   const evaluated = CROP_CATALOG.map((crop) => {
-    // 1. Ahorro de agua (cultivos con menor demanda puntúan más alto, sobre todo en zonas secas)
-    const rawWaterSaving = Math.round(
-      Math.max(15, Math.min(98, ((650 - crop.waterDemandMmCycle) / 400) * 100))
+    const midWaterMm = (crop.waterRangeMm[0] + crop.waterRangeMm[1]) / 2;
+
+    // 1. Eficiencia hídrica basada en rango estacional FAO-56 (300–800 mm)
+    const baseWaterScore = ((850 - midWaterMm) / (850 - 350)) * 100;
+    const deficitPenalty = waterDeficitRatio > 1.05 && midWaterMm > 520 ? 18 : 0;
+    const waterSavingScore = Math.max(
+      10,
+      Math.min(98, Math.round(baseWaterScore - deficitPenalty))
     );
-    const waterFitPenalty =
-      drynessRatio > 1.1 && crop.waterDemandMmCycle > 450 ? 22 : 0;
-    const waterSavingScore = Math.max(10, rawWaterSaving - waterFitPenalty);
 
-    // 2. Ajuste térmico local
-    let climateFitScore = 92;
-    if (tMin < crop.minTempC) {
-      climateFitScore -= Math.min(55, (crop.minTempC - tMin) * 8);
-    }
-    if (tMax > crop.maxTempC) {
-      climateFitScore -= Math.min(55, (tMax - crop.maxTempC) * 9);
-    }
-    climateFitScore = Math.max(15, Math.round(climateFitScore));
+    // 2. Aptitud térmica trapezoidal FAO EcoCrop
+    const climateFitScore = ecoCropTempSuitability(
+      tAvg,
+      tMin,
+      tMax,
+      crop.ecoCropTempC
+    );
 
-    // 3. Cuidado del suelo y control de erosión
+    // 3. Cuidado del suelo y control de erosión (BNF + Factor C RUSLE)
+    const bnfMid = (crop.bnfKgNHa[0] + crop.bnfKgNHa[1]) / 2;
+    const bnfScore = Math.min(100, 40 + (bnfMid / 100) * 60);
+    const erosionProtection = Math.max(10, Math.min(100, Math.round((1 - crop.rusleCFactor) * 105)));
+
     const soilScore =
       slope >= 8
-        ? Math.round(crop.soilHealthBoost * 0.45 + crop.erosionControl * 0.55)
-        : Math.round(crop.soilHealthBoost * 0.75 + crop.erosionControl * 0.25);
+        ? Math.round(bnfScore * 0.4 + erosionProtection * 0.6)
+        : Math.round(bnfScore * 0.65 + erosionProtection * 0.35);
 
-    // Ponderación según prioridad elegida por el agricultor
     const weights: Record<
       FarmerPriority,
       { wWater: number; wSoil: number; wClimate: number }
@@ -150,27 +175,33 @@ export function evaluateCropRotations(
     };
 
     const w = weights[priority];
-    let matchScore = Math.round(
-      waterSavingScore * w.wWater +
-        soilScore * w.wSoil +
-        climateFitScore * w.wClimate
+    const matchScore = Math.min(
+      99,
+      Math.round(
+        waterSavingScore * w.wWater +
+          soilScore * w.wSoil +
+          climateFitScore * w.wClimate
+      )
     );
 
-    // Bonus si hay pendiente fuerte y el cultivo protege bien el suelo
-    if (priority === "erosion" && crop.erosionControl >= 90) {
-      matchScore = Math.min(99, matchScore + 6);
-    }
-
     const reasons: string[] = [];
-    if (waterSavingScore >= 75) reasons.push("consume poca agua");
-    if (crop.nitrogenFixer) reasons.push("aporta nitrógeno natural al suelo");
-    if (climateFitScore >= 85) reasons.push("se adapta bien a las temperaturas de esta zona");
-    if (slope >= 8 && crop.erosionControl >= 80) reasons.push("protege laderas contra la erosión");
+    if (midWaterMm <= 450) {
+      reasons.push(`demanda hídrica baja (${crop.waterRangeMm[0]}–${crop.waterRangeMm[1]} mm/ciclo)`);
+    }
+    if (crop.bnfKgNHa[1] > 0) {
+      reasons.push(`fija ${crop.bnfKgNHa[0]}–${crop.bnfKgNHa[1]} kg N/ha`);
+    }
+    if (climateFitScore >= 85) {
+      reasons.push(`óptimo para ${tAvg} °C promedio en esta zona`);
+    }
+    if (slope >= 8 && crop.rusleCFactor <= 0.2) {
+      reasons.push(`bajo factor de erosión (C=${crop.rusleCFactor})`);
+    }
 
     const reason =
       reasons.length > 0
-        ? `Recomendado porque ${reasons.join(" y ")}.`
-        : "Opción viable si cuentas con riego de apoyo y manejo de fertilización.";
+        ? `Recomendado: ${reasons.join("; ")}.`
+        : "Opción viable con riego de apoyo y manejo de fertilización.";
 
     return {
       ...crop,

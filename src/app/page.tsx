@@ -606,9 +606,14 @@ export default function HomePage() {
                     </div>
 
                     <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="text-lg font-bold text-white">
-                        {crop.name}
-                      </h3>
+                      <div>
+                        <h3 className="text-lg font-bold text-white">
+                          {crop.name}
+                        </h3>
+                        <span className="text-[11px] italic text-slate-400">
+                          {crop.scientificName}
+                        </span>
+                      </div>
                       <span className="text-lg font-bold text-emerald-400">
                         {crop.matchScore}%
                       </span>
@@ -678,6 +683,9 @@ export default function HomePage() {
                         A tener en cuenta:
                       </span>{" "}
                       {crop.tradeOff}
+                    </p>
+                    <p className="pt-1 text-[10px] text-slate-500">
+                      Base científica: {crop.reference}
                     </p>
                   </div>
                 </div>
