@@ -1,6 +1,8 @@
-__pycache__/
-*.pyc
-.venv/
+node_modules/
+.next/
+out/
+.vercel
 .env
-.streamlit/secrets.toml
-*.parquet
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
