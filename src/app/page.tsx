@@ -20,6 +20,7 @@ import {
   Award,
   Globe,
   Sparkles,
+  Satellite,
 } from "lucide-react";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 import {
@@ -37,34 +38,36 @@ import {
 import { LANG_LABELS, T, type Lang } from "@/lib/i18n";
 import type { Forecast7d, HistoryYear } from "@/app/api/climate/route";
 import type { AdvisorResponse } from "@/app/api/ai-advisor/route";
+import type { NdviTrend } from "@/lib/providers/modisNdvi";
+import Logo from "@/components/Logo";
 
 const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-72 w-full items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/70 text-sm text-slate-400 sm:h-80">
-      <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+    <div className="flex h-72 w-full items-center justify-center rounded-2xl border border-line bg-panel text-sm text-ink-muted sm:h-80">
+      <Loader2 className="h-5 w-5 animate-spin text-amber" />
     </div>
   ),
 });
 
 const LEVEL_STYLES: Record<
   RiskLevel,
-  { border: string; badge: string; dot: string }
+  { border: string; text: string; dot: string }
 > = {
   good: {
-    border: "border-emerald-500/30 bg-emerald-500/5",
-    badge: "bg-emerald-500/15 text-emerald-300",
-    dot: "bg-emerald-400",
+    border: "border-green/30 bg-green/5",
+    text: "text-green",
+    dot: "bg-green",
   },
   warn: {
-    border: "border-amber-500/30 bg-amber-500/5",
-    badge: "bg-amber-500/15 text-amber-300",
-    dot: "bg-amber-400",
+    border: "border-amber/30 bg-amber/5",
+    text: "text-amber",
+    dot: "bg-amber",
   },
   alert: {
-    border: "border-rose-500/35 bg-rose-500/5",
-    badge: "bg-rose-500/15 text-rose-300",
-    dot: "bg-rose-400",
+    border: "border-rose/35 bg-rose/5",
+    text: "text-rose",
+    dot: "bg-rose",
   },
 };
 
@@ -73,7 +76,63 @@ const CARD_ICONS = {
   heat: Thermometer,
   health: Sprout,
   erosion: Mountain,
+  vegetation: Satellite,
 };
+
+// Icon color = category (always the same metric), independent of the badge
+// color = severity (good/warn/alert) — two channels, not one, so cards don't
+// all blur into the same hue when several happen to share a risk level.
+const CARD_ICON_COLORS: Record<keyof typeof CARD_ICONS, string> = {
+  water: "text-cyan",
+  heat: "text-amber",
+  health: "text-green",
+  erosion: "text-stone",
+  vegetation: "text-ink-muted",
+};
+
+const PRIORITY_ICONS = {
+  water: Droplets,
+  soil: Sprout,
+  climate: Thermometer,
+  erosion: Mountain,
+} as const;
+
+// Same fixed category colors as CARD_ICON_COLORS — a priority button always
+// means the same thing, regardless of whether it's the active selection.
+const PRIORITY_COLORS: Record<keyof typeof PRIORITY_ICONS, string> = {
+  water: "text-cyan",
+  soil: "text-green",
+  climate: "text-amber",
+  erosion: "text-stone",
+};
+
+function formatUtc(d: Date) {
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  const ss = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss} UTC`;
+}
+
+function StepEyebrow({ n, label, title }: { n: string; label: string; title: string }) {
+  return (
+    <div className="flex items-start gap-3 sm:gap-4">
+      <span
+        aria-hidden
+        className="select-none font-display text-4xl font-bold leading-none text-line-strong sm:text-5xl"
+      >
+        {n}
+      </span>
+      <div className="pt-1">
+        <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-amber">
+          {label}
+        </span>
+        <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">
+          {title}
+        </h2>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [lang, setLang] = useState<Lang>("en");
@@ -89,15 +148,18 @@ export default function HomePage() {
   const [climate, setClimate] = useState<ClimateMetrics | null>(null);
   const [forecast, setForecast] = useState<Forecast7d | null>(null);
   const [history5y, setHistory5y] = useState<HistoryYear[]>([]);
+  const [ndvi, setNdvi] = useState<NdviTrend | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState<boolean>(false);
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
+  const [showCropScience, setShowCropScience] = useState<boolean>(false);
   const [priority, setPriority] = useState<FarmerPriority>("water");
   const [currentCropType, setCurrentCropType] = useState<CurrentCropType>(
     FARM_PRESETS[0].defaultCropType
   );
   const [aiPlan, setAiPlan] = useState<AdvisorResponse | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [clock, setClock] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.language) {
@@ -106,6 +168,16 @@ export default function HomePage() {
         setLang(code);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  useEffect(() => {
+    setClock(formatUtc(new Date()));
+    const id = setInterval(() => setClock(formatUtc(new Date())), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const t = T[lang];
@@ -142,6 +214,26 @@ export default function HomePage() {
   useEffect(() => {
     setAiPlan(null);
   }, [lat, lon, priority, currentCropType, lang]);
+
+  // NDVI (MODIS) is a slow, best-effort satellite lookup — fetched on its own
+  // request so it never delays the climate/diagnostics/rotation sections above.
+  useEffect(() => {
+    let active = true;
+    setNdvi(null);
+
+    fetch(`/api/ndvi?lat=${lat}&lon=${lon}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (active) setNdvi(data.ndvi ?? null);
+      })
+      .catch(() => {
+        if (active) setNdvi(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [lat, lon]);
 
   function choosePreset(preset: FarmPreset) {
     setSelectedPreset(preset);
@@ -213,7 +305,7 @@ export default function HomePage() {
   const agroZone = climate ? detectAgroZone(lat, climate) : null;
 
   const diagnostic = climate
-    ? buildFieldDiagnostics(climate, lang, selectedPreset?.slopePct)
+    ? buildFieldDiagnostics(climate, lang, selectedPreset?.slopePct, ndvi)
     : null;
 
   const trend5y = analyzeTrend5y(history5y, lang);
@@ -233,62 +325,79 @@ export default function HomePage() {
   const activeProblem = t.problemByCrop[currentCropType];
 
   return (
-    <main className="mx-auto max-w-6xl space-y-8 px-5 py-8 sm:px-8 sm:py-10">
-      <header className="flex flex-col gap-3 border-b border-slate-800/90 pb-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-            <Sprout className="h-3.5 w-3.5" />
-            {t.badge}
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            AgroShift NASA
-          </h1>
-          <p className="max-w-2xl text-sm text-slate-300 sm:text-base">
-            {t.subtitle}
-          </p>
+    <main className="mx-auto max-w-[1440px] space-y-8 px-5 py-8 sm:space-y-10 sm:px-8 sm:py-10">
+      <header className="animate-fade-up relative border-b border-dashed border-line pb-5 sm:pb-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px overflow-hidden"
+        >
+          <div className="animate-scan h-px w-1/3 bg-gradient-to-r from-transparent via-amber to-transparent" />
         </div>
 
-        <div className="flex w-fit items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/90 p-1">
-          <Globe className="mx-1.5 h-3.5 w-3.5 text-slate-400" />
-          {(["en", "es", "fr", "pt"] as Lang[]).map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() => setLang(code)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                lang === code
-                  ? "bg-emerald-500/20 text-emerald-300"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              {LANG_LABELS[code]}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber/30 bg-amber/10 px-3 py-1 font-mono text-xs font-medium text-amber">
+            <span className="animate-pulse-slow h-1.5 w-1.5 rounded-full bg-amber" />
+            {t.badge}
+          </div>
+          <div
+            className="font-mono text-[11px] tracking-wider text-ink-faint"
+            suppressHydrationWarning
+          >
+            {clock ?? "--:--:-- UTC"}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Logo className="h-9 w-9 shrink-0 sm:h-11 sm:w-11" />
+              <h1 className="font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+                AgroShift <span className="text-amber">NASA</span>
+              </h1>
+            </div>
+            <p className="max-w-2xl text-sm text-ink-muted sm:text-base">
+              {t.subtitle}
+            </p>
+          </div>
+
+          <div className="flex w-fit items-center gap-1 rounded-xl border border-line bg-panel p-1">
+            <Globe className="mx-1.5 h-3.5 w-3.5 text-ink-faint" />
+            {(["en", "es", "fr", "pt"] as Lang[]).map((code) => (
+              <button
+                key={code}
+                type="button"
+                onClick={() => setLang(code)}
+                className={`rounded-lg px-2.5 py-1 font-mono text-xs font-semibold transition ${
+                  lang === code
+                    ? "bg-panel-raised text-ink"
+                    : "text-ink-faint hover:text-ink"
+                }`}
+              >
+                {LANG_LABELS[code]}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
       {/* STEP 1: GLOBAL FIELD SELECTOR */}
-      <section className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 sm:p-7">
+      <section
+        className="animate-fade-up rounded-lg border border-line bg-panel/70 p-5 sm:p-7"
+        style={{ animationDelay: "80ms" }}
+      >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-              {t.step1Label}
-            </span>
-            <h2 className="text-xl font-semibold text-white">
-              {t.step1Title}
-            </h2>
-          </div>
+          <StepEyebrow n="01" label={t.step1Label} title={t.step1Title} />
 
           <button
             type="button"
             onClick={handleUseMyLocation}
             disabled={locating}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-200 transition hover:border-emerald-500/60 hover:text-white disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl border border-line bg-panel-raised px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:-translate-y-0.5 hover:border-amber/60 hover:text-ink disabled:opacity-50 disabled:hover:translate-y-0"
           >
             {locating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-amber" />
             ) : (
-              <LocateFixed className="h-3.5 w-3.5 text-emerald-400" />
+              <LocateFixed className="h-3.5 w-3.5 text-amber" />
             )}
             {t.useMyLocation}
           </button>
@@ -303,31 +412,31 @@ export default function HomePage() {
                 key={preset.id}
                 type="button"
                 onClick={() => choosePreset(preset)}
-                className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition ${
+                className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
                   active
-                    ? "border-emerald-500 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.25)]"
-                    : "border-slate-800 bg-slate-950/60 hover:border-slate-700"
+                    ? "border-line-strong bg-panel-raised shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
+                    : "border-line bg-void/40 hover:border-line-strong"
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-emerald-400">
+                    <span className="font-mono text-[11px] uppercase tracking-wide text-amber">
                       {meta.region}
                     </span>
                     {active && (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-ink" />
                     )}
                   </div>
-                  <h3 className="mt-1 text-base font-semibold text-white">
+                  <h3 className="mt-1 text-base font-semibold text-ink">
                     {meta.name}
                   </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
                     {meta.description}
                   </p>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-800/80 pt-2.5 text-[11px] text-slate-400">
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-2.5 text-[11px] text-ink-faint">
                   <span>{meta.climateTag}</span>
-                  <span className="text-slate-300">{meta.currentCrop}</span>
+                  <span className="text-ink-muted">{meta.currentCrop}</span>
                 </div>
               </button>
             );
@@ -347,58 +456,58 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-950/70 p-5 lg:col-span-5">
+          <div className="flex flex-col justify-between rounded-2xl border border-line bg-void/50 p-5 lg:col-span-5">
             <div>
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs font-medium text-emerald-400">
+                <div className="flex items-center gap-2 font-mono text-xs font-medium text-amber">
                   <MapPin className="h-4 w-4" />
                   {t.activeParcel}
                 </div>
                 {agroZone && (
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300">
+                  <span className="rounded-full border border-line bg-panel-raised px-2.5 py-0.5 text-[11px] font-medium text-amber">
                     {t.zones[agroZone]}
                   </span>
                 )}
               </div>
-              <h3 className="mt-1 text-lg font-semibold text-white">
+              <h3 className="mt-1 text-lg font-semibold text-ink">
                 {activeLabel}
               </h3>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-ink-faint">
                 {presetMeta
                   ? `${t.currentCropLabel}: ${presetMeta.currentCrop}`
                   : t.freeLocationNote}
               </p>
 
-              <div className="mt-5 border-t border-slate-800 pt-4">
+              <div className="mt-5 border-t border-line pt-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-xs font-medium text-slate-300">
+                  <span className="text-xs font-medium text-ink-muted">
                     {t.climate30d}
                   </span>
-                  <span className="rounded-md bg-slate-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300">
+                  <span className="rounded-md bg-panel-raised px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide text-cyan">
                     NASA POWER
                   </span>
                 </div>
 
                 {loading ? (
-                  <div className="flex items-center gap-2 py-8 text-sm text-slate-400">
-                    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+                  <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
+                    <Loader2 className="h-4 w-4 animate-spin text-amber" />
                     {t.loadingNasa}
                   </div>
                 ) : errorMsg ? (
-                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                  <div className="rounded-xl border border-rose/30 bg-rose/10 p-3 text-xs text-rose">
                     {errorMsg}
                   </div>
                 ) : climate ? (
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <Thermometer className="h-3.5 w-3.5 text-amber-400" />
+                    <div className="rounded-xl border border-line bg-panel p-3">
+                      <div className="flex items-center gap-1.5 text-[11px] text-ink-faint">
+                        <Thermometer className="h-3.5 w-3.5 text-amber" />
                         {t.tempAvg}
                       </div>
-                      <div className="mt-1 text-xl font-bold text-white">
+                      <div className="mt-1 font-mono text-xl font-bold text-ink">
                         {climate.tempAvgC ?? "—"} °C
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-ink-faint">
                         {t.minMax(
                           String(climate.tempMinC ?? "—"),
                           String(climate.tempMaxC ?? "—")
@@ -406,41 +515,41 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <CloudRain className="h-3.5 w-3.5 text-sky-400" />
+                    <div className="rounded-xl border border-line bg-panel p-3">
+                      <div className="flex items-center gap-1.5 text-[11px] text-ink-faint">
+                        <CloudRain className="h-3.5 w-3.5 text-cyan" />
                         {t.rain30d}
                       </div>
-                      <div className="mt-1 text-xl font-bold text-white">
+                      <div className="mt-1 font-mono text-xl font-bold text-ink">
                         {climate.rain30dMm ?? "—"} mm
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-ink-faint">
                         {t.last30d}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <Droplets className="h-3.5 w-3.5 text-cyan-400" />
+                    <div className="rounded-xl border border-line bg-panel p-3">
+                      <div className="flex items-center gap-1.5 text-[11px] text-ink-faint">
+                        <Droplets className="h-3.5 w-3.5 text-cyan" />
                         {t.humidity}
                       </div>
-                      <div className="mt-1 text-xl font-bold text-white">
+                      <div className="mt-1 font-mono text-xl font-bold text-ink">
                         {climate.humidityPct ?? "—"}%
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-ink-faint">
                         {t.average}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-3">
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <Sun className="h-3.5 w-3.5 text-yellow-400" />
+                    <div className="rounded-xl border border-line bg-panel p-3">
+                      <div className="flex items-center gap-1.5 text-[11px] text-ink-faint">
+                        <Sun className="h-3.5 w-3.5 text-amber" />
                         {t.solar}
                       </div>
-                      <div className="mt-1 text-xl font-bold text-white">
+                      <div className="mt-1 font-mono text-xl font-bold text-ink">
                         {climate.solarMjM2Day ?? "—"}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-ink-faint">
                         {t.solarUnit}
                       </div>
                     </div>
@@ -448,12 +557,12 @@ export default function HomePage() {
                 ) : null}
 
                 {!loading && forecast && (
-                  <div className="mt-3 rounded-xl border border-sky-500/30 bg-sky-500/5 px-3 py-2.5 text-xs">
+                  <div className="mt-3 rounded-xl border border-line bg-panel-raised px-3 py-2.5 text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-sky-300">
+                      <span className="font-medium text-cyan">
                         {t.forecast7dLabel}
                       </span>
-                      <span className="text-[11px] text-slate-300">
+                      <span className="font-mono text-[11px] text-ink-muted">
                         {forecast.minTempC}°–{forecast.maxTempC}°C ·{" "}
                         {forecast.totalRainMm} mm
                       </span>
@@ -465,33 +574,33 @@ export default function HomePage() {
 
             <form
               onSubmit={applyManualCoords}
-              className="mt-4 flex flex-wrap items-end gap-2 border-t border-slate-800 pt-4"
+              className="mt-4 flex flex-wrap items-end gap-2 border-t border-line pt-4"
             >
               <div className="min-w-[90px] flex-1">
-                <label className="block text-[10px] uppercase tracking-wide text-slate-500">
+                <label className="block text-[10px] uppercase tracking-wide text-ink-faint">
                   {t.latLabel}
                 </label>
                 <input
                   type="text"
                   value={latInput}
                   onChange={(e) => setLatInput(e.target.value)}
-                  className="mt-0.5 w-full rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  className="mt-0.5 w-full rounded-lg border border-line bg-void px-2.5 py-1.5 font-mono text-xs text-ink focus:border-amber focus:outline-none"
                 />
               </div>
               <div className="min-w-[90px] flex-1">
-                <label className="block text-[10px] uppercase tracking-wide text-slate-500">
+                <label className="block text-[10px] uppercase tracking-wide text-ink-faint">
                   {t.lonLabel}
                 </label>
                 <input
                   type="text"
                   value={lonInput}
                   onChange={(e) => setLonInput(e.target.value)}
-                  className="mt-0.5 w-full rounded-lg border border-slate-800 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 focus:border-emerald-500 focus:outline-none"
+                  className="mt-0.5 w-full rounded-lg border border-line bg-void px-2.5 py-1.5 font-mono text-xs text-ink focus:border-amber focus:outline-none"
                 />
               </div>
               <button
                 type="submit"
-                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-500"
+                className="rounded-lg bg-amber px-3 py-1.5 text-xs font-semibold text-void transition hover:bg-amber/80"
               >
                 {t.goBtn}
               </button>
@@ -501,21 +610,17 @@ export default function HomePage() {
       </section>
 
       {/* STEP 2: SIMPLE TRAFFIC-LIGHT FIELD DIAGNOSTICS */}
-      <section className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 sm:p-7">
+      <section
+        className="animate-fade-up rounded-lg border border-line bg-panel/70 p-5 sm:p-7"
+        style={{ animationDelay: "160ms" }}
+      >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-              {t.step2Label}
-            </span>
-            <h2 className="text-xl font-semibold text-white">
-              {t.step2Title}
-            </h2>
-          </div>
+          <StepEyebrow n="02" label={t.step2Label} title={t.step2Title} />
 
           <button
             type="button"
             onClick={() => setShowTechDetails((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-1.5 text-xs text-slate-300 transition hover:border-slate-700 hover:text-white"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-void/60 px-3 py-1.5 text-xs text-ink-muted transition hover:border-line-strong hover:text-ink"
           >
             {showTechDetails ? (
               <ChevronUp className="h-3.5 w-3.5" />
@@ -527,71 +632,104 @@ export default function HomePage() {
         </div>
 
         {loading || !diagnostic ? (
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/50 p-5 text-sm text-slate-400">
-            <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+          <div className="flex items-center gap-2 rounded-2xl border border-line bg-void/50 p-5 text-sm text-ink-muted">
+            <Loader2 className="h-4 w-4 animate-spin text-amber" />
             {t.analyzing}
           </div>
         ) : (
           <>
-            <div className="mb-5 flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
-              <p className="text-sm font-medium text-slate-200">
+            <div className="mb-5 flex items-start gap-3 rounded-2xl border border-line bg-void/70 p-4">
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber" />
+              <p className="text-sm font-medium text-ink">
                 {diagnostic.headline}
               </p>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {diagnostic.cards.map((card) => {
-                const style = LEVEL_STYLES[card.level];
-                const Icon = CARD_ICONS[card.id];
-                return (
-                  <div
-                    key={card.id}
-                    className={`flex flex-col justify-between rounded-2xl border p-4 ${style.border}`}
-                  >
-                    <div>
-                      <div className="mb-3 flex items-center justify-between">
-                        <Icon className="h-5 w-5 text-slate-200" />
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${style.badge}`}
-                        >
+              {diagnostic.cards
+                .filter((card) => card.id !== "vegetation")
+                .map((card) => {
+                  const style = LEVEL_STYLES[card.level];
+                  const Icon = CARD_ICONS[card.id];
+                  return (
+                    <div
+                      key={card.id}
+                      className={`flex flex-col justify-between rounded-2xl border p-4 ${style.border}`}
+                    >
+                      <div>
+                        <div className="mb-3 flex items-center justify-between">
+                          <Icon className={`h-5 w-5 ${CARD_ICON_COLORS[card.id]}`} />
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${style.dot}`}
-                          />
-                          {card.statusLabel}
-                        </span>
+                            className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${style.text}`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`}
+                            />
+                            {card.statusLabel}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-semibold text-ink">
+                          {card.title}
+                        </h3>
+                        <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+                          {card.explanation}
+                        </p>
                       </div>
-                      <h3 className="text-base font-semibold text-white">
-                        {card.title}
-                      </h3>
-                      <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
-                        {card.explanation}
-                      </p>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
 
+            {(() => {
+              const vegetationCard = diagnostic.cards.find(
+                (card) => card.id === "vegetation"
+              );
+              if (!vegetationCard) return null;
+              const style = LEVEL_STYLES[vegetationCard.level];
+              return (
+                <div
+                  className={`mt-4 flex items-start gap-3 rounded-2xl border p-4 ${style.border}`}
+                >
+                  <Satellite className="mt-0.5 h-5 w-5 shrink-0 text-ink-muted" />
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-base font-semibold text-ink">
+                        {vegetationCard.title}
+                      </h3>
+                      <span
+                        className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${style.text}`}
+                      >
+                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
+                        {vegetationCard.statusLabel}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
+                      {vegetationCard.explanation}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
             {history5y.length > 0 && (
-              <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+              <div className="mt-5 rounded-2xl border border-line bg-void/60 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+                  <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-cyan">
                     {t.historyTitle}
                   </h3>
                   {trend5y && (
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${LEVEL_STYLES[trend5y.level].badge}`}
+                      className={`inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wide ${LEVEL_STYLES[trend5y.level].text}`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${LEVEL_STYLES[trend5y.level].dot}`}
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${LEVEL_STYLES[trend5y.level].dot}`}
                       />
                       {trend5y.badge}
                     </span>
                   )}
                 </div>
                 {trend5y && (
-                  <p className="mb-3 text-[11px] text-slate-300">
+                  <p className="mb-3 text-[11px] text-ink-muted">
                     {trend5y.explanation}
                   </p>
                 )}
@@ -599,21 +737,21 @@ export default function HomePage() {
                   {history5y.map((yr) => (
                     <div
                       key={yr.year}
-                      className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-2.5 text-xs"
+                      className="rounded-xl border border-line bg-panel p-2.5 text-xs"
                     >
-                      <div className="font-semibold text-white">{yr.year}</div>
-                      <div className="mt-1 text-[11px] text-slate-300">
+                      <div className="font-mono font-semibold text-ink">{yr.year}</div>
+                      <div className="mt-1 text-[11px] text-ink-muted">
                         {yr.tempAvgC} °C · {yr.rainMmYear} mm
                       </div>
-                      <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400">
+                      <div className="mt-1.5 flex items-center justify-between text-[10px] text-ink-faint">
                         <span>GWETTOP</span>
-                        <span className="text-sky-300">
+                        <span className="text-cyan">
                           {Math.round(yr.soilWetness * 100)}%
                         </span>
                       </div>
-                      <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-800">
+                      <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-line">
                         <div
-                          className="h-full rounded-full bg-sky-400"
+                          className="h-full rounded-full bg-cyan"
                           style={{
                             width: `${Math.min(100, Math.round(yr.soilWetness * 100))}%`,
                           }}
@@ -626,50 +764,50 @@ export default function HomePage() {
             )}
 
             {showTechDetails && (
-              <div className="mt-5 grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/80 p-4 text-xs text-slate-300 sm:grid-cols-5">
+              <div className="mt-5 grid gap-3 rounded-2xl border border-line bg-void/80 p-4 text-xs text-ink-muted sm:grid-cols-5">
                 <div>
-                  <span className="block text-[11px] text-slate-500">
+                  <span className="block text-[11px] text-ink-faint">
                     {t.zoneLabel}
                   </span>
-                  <span className="font-semibold text-emerald-300">
+                  <span className="font-mono font-semibold text-amber">
                     {agroZone ? t.zones[agroZone] : "—"}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-[11px] text-slate-500">
+                  <span className="block text-[11px] text-ink-faint">
                     {t.elevLabel}
                   </span>
-                  <span className="font-semibold text-white">
+                  <span className="font-mono font-semibold text-ink">
                     {climate?.elevationM !== null
                       ? `${climate?.elevationM} m`
                       : "—"}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-[11px] text-slate-500">
+                  <span className="block text-[11px] text-ink-faint">
                     {t.slopeLabel}
                   </span>
-                  <span className="font-semibold text-white">
+                  <span className="font-mono font-semibold text-ink">
                     {climate?.slopePct !== null
                       ? `${climate?.slopePct}%`
                       : `${selectedPreset?.slopePct ?? "—"}%`}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-[11px] text-slate-500">
+                  <span className="block text-[11px] text-ink-faint">
                     {t.soilMoistLabel}
                   </span>
-                  <span className="font-semibold text-white">
+                  <span className="font-mono font-semibold text-ink">
                     {climate?.soilMoistureM3 !== null
                       ? `${climate?.soilMoistureM3} m³/m³`
                       : "—"}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-[11px] text-slate-500">
+                  <span className="block text-[11px] text-ink-faint">
                     {t.eoLabel}
                   </span>
-                  <span className="font-semibold text-white">
+                  <span className="font-mono font-semibold text-ink">
                     {climate?.eoMmDay !== null
                       ? `${climate?.eoMmDay} mm/d`
                       : "—"}
@@ -682,51 +820,60 @@ export default function HomePage() {
       </section>
 
       {/* STEP 3: REGION-ADAPTED CROP ROTATION COMPARATOR */}
-      <section className="rounded-3xl border border-slate-800 bg-slate-900/50 p-5 sm:p-7">
+      <section
+        className="animate-fade-up rounded-lg border border-line bg-panel/70 p-5 sm:p-7"
+        style={{ animationDelay: "240ms" }}
+      >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-                {t.step3Label}
+          <div className="flex items-start gap-3 sm:gap-4">
+            <StepEyebrow n="03" label={t.step3Label} title={t.step3Title} />
+            {agroZone && (
+              <span className="mt-1 hidden rounded-full bg-panel-raised px-2 py-0.5 text-[10px] font-medium text-ink-muted sm:inline-block">
+                {t.zones[agroZone]}
               </span>
-              {agroZone && (
-                <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-300">
-                  {t.zones[agroZone]}
-                </span>
-              )}
-            </div>
-            <h2 className="text-xl font-semibold text-white">
-              {t.step3Title}
-            </h2>
+            )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                { id: "water", label: `💧 ${t.priorities.water}` },
-                { id: "soil", label: `🌱 ${t.priorities.soil}` },
-                { id: "climate", label: `🌡️ ${t.priorities.climate}` },
-                { id: "erosion", label: `⛰️ ${t.priorities.erosion}` },
-              ] as const
-            ).map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setPriority(opt.id)}
-                className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
-                  priority === opt.id
-                    ? "border-emerald-500 bg-emerald-500/15 text-emerald-300"
-                    : "border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+          <div className="flex flex-col items-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowCropScience((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-void/60 px-3 py-1.5 text-xs text-ink-muted transition hover:border-line-strong hover:text-ink"
+            >
+              {showCropScience ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+              {t.showSci}
+            </button>
+
+            <div className="flex flex-wrap justify-end gap-2">
+              {(["water", "soil", "climate", "erosion"] as const).map((id) => {
+                const Icon = PRIORITY_ICONS[id];
+                const active = priority === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPriority(id)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition hover:-translate-y-0.5 ${
+                      active
+                        ? "border-line-strong bg-panel-raised text-ink"
+                        : "border-line bg-void/60 text-ink-muted hover:border-line-strong"
+                    }`}
+                  >
+                    <Icon className={`h-3.5 w-3.5 ${PRIORITY_COLORS[id]}`} />
+                    {t.priorities[id]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5">
-          <div className="mb-2 text-xs font-medium text-slate-300">
+        <div className="mb-4 rounded-2xl border border-line bg-void/60 p-3.5">
+          <div className="mb-2 text-xs font-medium text-ink-muted">
             {t.currentCropSelectorLabel}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -736,10 +883,10 @@ export default function HomePage() {
                   key={cropKey}
                   type="button"
                   onClick={() => setCurrentCropType(cropKey)}
-                  className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition ${
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-medium transition hover:-translate-y-0.5 ${
                     currentCropType === cropKey
-                      ? "border-sky-500 bg-sky-500/15 text-sky-300"
-                      : "border-slate-800 bg-slate-900/80 text-slate-300 hover:border-slate-700"
+                      ? "border-line-strong bg-panel-raised text-ink"
+                      : "border-line bg-panel text-ink-muted hover:border-line-strong"
                   }`}
                 >
                   {t.currentCropTypes[cropKey]}
@@ -750,29 +897,29 @@ export default function HomePage() {
         </div>
 
         <div className="mb-5 grid gap-3 md:grid-cols-2">
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-300">
+          <div className="rounded-2xl border border-rose/30 bg-rose/5 p-4">
+            <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-rose">
               {activeProblem.title}
             </h3>
-            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-slate-300">
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-ink-muted">
               {activeProblem.points.map((pt, i) => (
                 <li key={i}>{pt}</li>
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-300">
+          <div className="rounded-2xl border border-green/30 bg-green/5 p-4">
+            <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-green">
               {activeProblem.solutionTitle}
             </h3>
-            <p className="mt-2 text-xs leading-relaxed text-slate-300">
+            <p className="mt-2 text-xs leading-relaxed text-ink-muted">
               {activeProblem.solutionText}
             </p>
           </div>
         </div>
 
         {loading || rotations.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/50 p-5 text-sm text-slate-400">
-            <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+          <div className="flex items-center gap-2 rounded-2xl border border-line bg-void/50 p-5 text-sm text-ink-muted">
+            <Loader2 className="h-4 w-4 animate-spin text-amber" />
             {t.calculatingRot}
           </div>
         ) : (
@@ -784,22 +931,22 @@ export default function HomePage() {
                   key={crop.id}
                   className={`flex flex-col justify-between rounded-2xl border p-5 ${
                     isBest
-                      ? "border-emerald-500/60 bg-emerald-500/10"
-                      : "border-slate-800 bg-slate-950/60"
+                      ? "border-amber/60 bg-amber/10"
+                      : "border-line bg-void/60"
                   }`}
                 >
                   <div>
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-slate-400">
+                      <span className="text-xs font-medium text-ink-faint">
                         {crop.category}
                       </span>
                       {isBest ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-300">
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-amber/20 px-2.5 py-0.5 text-xs font-semibold text-amber">
                           <Award className="h-3.5 w-3.5" />
                           {t.bestChoice}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2.5 py-0.5 text-xs text-slate-300">
+                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-panel-raised px-2.5 py-0.5 text-xs text-ink-muted">
                           <Repeat className="h-3 w-3" />
                           {t.optionN(idx + 1)}
                         </span>
@@ -808,63 +955,72 @@ export default function HomePage() {
 
                     <div className="flex items-baseline justify-between gap-2">
                       <div>
-                        <h3 className="text-lg font-bold text-white">
+                        <h3 className="font-display text-lg font-bold text-ink">
                           {crop.name}
                         </h3>
-                        <span className="text-[11px] italic text-slate-400">
+                        <span className="text-[11px] italic text-ink-faint">
                           {crop.scientificName}
                         </span>
                       </div>
-                      <span className="text-lg font-bold text-emerald-400">
+                      <span className="font-mono text-lg font-bold text-amber">
                         {crop.matchScore}%
                       </span>
                     </div>
 
-                    <p className="mt-2 text-xs leading-relaxed text-slate-200">
+                    <p className="mt-2 text-xs leading-relaxed text-ink-muted">
                       {crop.reason}
                     </p>
 
                     <div className="mt-4 space-y-2.5">
                       <div>
-                        <div className="mb-1 flex justify-between text-[11px] text-slate-400">
-                          <span>{t.waterSaving}</span>
-                          <span className="text-slate-200">
+                        <div className="mb-1 flex justify-between text-[11px] text-ink-faint">
+                          <span className="inline-flex items-center gap-1">
+                            <Droplets className="h-3 w-3 text-cyan" />
+                            {t.waterSaving}
+                          </span>
+                          <span className="font-mono text-ink-muted">
                             {crop.waterSavingScore}%
                           </span>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
                           <div
-                            className="h-full rounded-full bg-sky-400"
+                            className="h-full rounded-full bg-cyan"
                             style={{ width: `${crop.waterSavingScore}%` }}
                           />
                         </div>
                       </div>
 
                       <div>
-                        <div className="mb-1 flex justify-between text-[11px] text-slate-400">
-                          <span>{t.soilCare}</span>
-                          <span className="text-slate-200">
+                        <div className="mb-1 flex justify-between text-[11px] text-ink-faint">
+                          <span className="inline-flex items-center gap-1">
+                            <Sprout className="h-3 w-3 text-green" />
+                            {t.soilCare}
+                          </span>
+                          <span className="font-mono text-ink-muted">
                             {crop.soilScore}%
                           </span>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
                           <div
-                            className="h-full rounded-full bg-emerald-400"
+                            className="h-full rounded-full bg-green"
                             style={{ width: `${crop.soilScore}%` }}
                           />
                         </div>
                       </div>
 
                       <div>
-                        <div className="mb-1 flex justify-between text-[11px] text-slate-400">
-                          <span>{t.climateFit}</span>
-                          <span className="text-slate-200">
+                        <div className="mb-1 flex justify-between text-[11px] text-ink-faint">
+                          <span className="inline-flex items-center gap-1">
+                            <Thermometer className="h-3 w-3 text-amber" />
+                            {t.climateFit}
+                          </span>
+                          <span className="font-mono text-ink-muted">
                             {crop.climateFitScore}%
                           </span>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
                           <div
-                            className="h-full rounded-full bg-amber-400"
+                            className="h-full rounded-full bg-amber"
                             style={{ width: `${crop.climateFitScore}%` }}
                           />
                         </div>
@@ -872,29 +1028,31 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-1.5 border-t border-slate-800/80 pt-3 text-[11px]">
-                    <p className="text-slate-300">
-                      <span className="font-semibold text-emerald-300">
+                  <div className="mt-4 space-y-1.5 border-t border-line pt-3 text-[11px]">
+                    <p className="text-ink-muted">
+                      <span className="font-semibold text-green">
                         {t.sanidadLabel}:
                       </span>{" "}
                       {crop.pestBreakBenefit}
                     </p>
-                    <p className="text-slate-400">
-                      <span className="font-semibold text-amber-300">
+                    <p className="text-ink-faint">
+                      <span className="font-semibold text-amber">
                         {t.tradeOffLabel}:
                       </span>{" "}
                       {crop.tradeOff}
                     </p>
-                    <div className="pt-1.5 text-[10px] leading-relaxed text-slate-400">
-                      <span className="font-semibold text-slate-300">
-                        {t.sciBaseLabel}:
-                      </span>
-                      <ul className="mt-1 list-disc space-y-0.5 pl-4 text-slate-500">
-                        {crop.citations.map((cite, cIdx) => (
-                          <li key={cIdx}>{cite}</li>
-                        ))}
-                      </ul>
-                    </div>
+                    {showCropScience && (
+                      <div className="pt-1.5 text-[10px] leading-relaxed text-ink-faint">
+                        <span className="font-semibold text-ink-muted">
+                          {t.sciBaseLabel}:
+                        </span>
+                        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-ink-faint">
+                          {crop.citations.map((cite, cIdx) => (
+                            <li key={cIdx}>{cite}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -945,7 +1103,7 @@ export default function HomePage() {
                     setAiLoading(false);
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-ink transition hover:bg-indigo-500 disabled:opacity-50"
               >
                 {aiLoading ? (
                   <>
@@ -964,7 +1122,7 @@ export default function HomePage() {
             {aiPlan && (
               <div className="mt-3 space-y-2 border-t border-indigo-500/20 pt-3 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-slate-200">
+                  <p className="font-medium text-ink">
                     {aiPlan.diagnosisSummary}
                   </p>
                   <span className="rounded-full bg-indigo-500/20 px-2.5 py-0.5 text-[10px] font-medium text-indigo-300">
@@ -973,12 +1131,12 @@ export default function HomePage() {
                       : t.aiSourceFallback}
                   </span>
                 </div>
-                <ol className="list-decimal space-y-1 pl-5 text-slate-300">
+                <ol className="list-decimal space-y-1 pl-5 text-ink-muted">
                   {aiPlan.actionSteps.map((step, idx) => (
                     <li key={idx}>{step}</li>
                   ))}
                 </ol>
-                <p className="pt-1 text-[11px] text-amber-300">
+                <p className="pt-1 text-[11px] text-amber">
                   <span className="font-semibold">{t.aiCheckLabel}:</span>{" "}
                   {aiPlan.localCheck}
                 </p>
@@ -988,29 +1146,32 @@ export default function HomePage() {
         )}
       </section>
 
-      <footer className="space-y-4 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-5 sm:p-6">
+      <footer
+        className="animate-fade-up space-y-4 border-t border-dashed border-line pt-6"
+        style={{ animationDelay: "320ms" }}
+      >
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-sky-400">
+          <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-cyan">
             {t.districtTitle}
           </h3>
-          <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
+          <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
             {t.districtText}
           </p>
-          <p className="mt-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[11px] leading-relaxed text-slate-400">
+          <p className="mt-2 rounded-xl border border-line bg-void/60 px-3 py-2 text-[11px] leading-relaxed text-ink-faint">
             {t.sentinelNote}
           </p>
         </div>
-        <div className="border-t border-slate-800/80 pt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+        <div className="border-t border-dashed border-line pt-4">
+          <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-amber">
             {t.methodTitle}
           </h3>
-          <ul className="mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-400">
+          <ul className="mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-ink-faint">
             {t.methodItems.map((item, idx) => (
               <li key={idx}>{item}</li>
             ))}
           </ul>
         </div>
-        <p className="border-t border-slate-800/80 pt-3 text-xs font-medium text-slate-300">
+        <p className="border-t border-dashed border-line pt-3 text-xs font-medium text-ink-muted">
           {t.farmerDisclaimer}
         </p>
       </footer>

@@ -112,17 +112,26 @@ export default function FarmMap({
   }, [satellite]);
 
   return (
-    <div className="relative h-72 w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 sm:h-80">
+    <div className="relative h-72 w-full overflow-hidden rounded-2xl border border-line bg-panel sm:h-80">
       <div ref={containerRef} className="h-full w-full z-0" />
+
+      {/* targeting reticle — decorative, never intercepts map clicks */}
+      <div aria-hidden className="pointer-events-none absolute inset-3 z-[400] sm:inset-4">
+        <span className="absolute left-0 top-0 h-5 w-5 border-l-2 border-t-2 border-amber/50" />
+        <span className="absolute right-0 top-0 h-5 w-5 border-r-2 border-t-2 border-amber/50" />
+        <span className="absolute bottom-0 left-0 h-5 w-5 border-b-2 border-l-2 border-amber/50" />
+        <span className="absolute bottom-0 right-0 h-5 w-5 border-b-2 border-r-2 border-amber/50" />
+      </div>
+
       <button
         type="button"
         onClick={() => setSatellite((s) => !s)}
-        className="absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950/85 px-2.5 py-1.5 text-xs font-medium text-slate-200 backdrop-blur transition hover:border-emerald-500/60 hover:text-white"
+        className="absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-lg border border-line bg-void/85 px-2.5 py-1.5 text-xs font-medium text-ink-muted backdrop-blur transition hover:-translate-y-0.5 hover:border-amber/60 hover:text-ink"
       >
-        <Layers className="h-3.5 w-3.5 text-emerald-400" />
+        <Layers className="h-3.5 w-3.5 text-amber" />
         {satellite ? satelliteLabel : mapLabel}
       </button>
-      <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-slate-800 bg-slate-950/80 px-2.5 py-1 text-[11px] text-slate-300 backdrop-blur">
+      <div className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg border border-line bg-void/80 px-2.5 py-1 font-mono text-[11px] text-ink-muted backdrop-blur">
         {hintText}
       </div>
     </div>

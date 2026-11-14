@@ -155,10 +155,10 @@ export const T: Record<Lang, Translations> = {
     tradeOffLabel: "Trade-off",
     sciBaseLabel: "Scientific basis",
     priorities: {
-      water: "💧 Save water",
-      soil: "🌱 Improve soil",
-      climate: "🌡️ Heat/frost resilience",
-      erosion: "⛰️ Stop erosion",
+      water: "Save water",
+      soil: "Improve soil",
+      climate: "Heat/frost resilience",
+      erosion: "Stop erosion",
     },
     zones: {
       tropicalArid: "Arid / Semi-arid Tropical & Subtropical",
@@ -303,10 +303,10 @@ export const T: Record<Lang, Translations> = {
     tradeOffLabel: "A tener en cuenta",
     sciBaseLabel: "Base científica",
     priorities: {
-      water: "💧 Ahorrar agua",
-      soil: "🌱 Mejorar suelo",
-      climate: "🌡️ Resistir clima",
-      erosion: "⛰️ Frenar erosión",
+      water: "Ahorrar agua",
+      soil: "Mejorar suelo",
+      climate: "Resistir clima",
+      erosion: "Frenar erosión",
     },
     zones: {
       tropicalArid: "Tropical / Subtropical Árido y Semiárido",
@@ -451,10 +451,10 @@ export const T: Record<Lang, Translations> = {
     tradeOffLabel: "Compromis",
     sciBaseLabel: "Base scientifique",
     priorities: {
-      water: "💧 Économiser l'eau",
-      soil: "🌱 Améliorer le sol",
-      climate: "🌡️ Résister au climat",
-      erosion: "⛰️ Freiner l'érosion",
+      water: "Économiser l'eau",
+      soil: "Améliorer le sol",
+      climate: "Résister au climat",
+      erosion: "Freiner l'érosion",
     },
     zones: {
       tropicalArid: "Tropical / Subtropical Aride & Semi-aride",
@@ -599,10 +599,10 @@ export const T: Record<Lang, Translations> = {
     tradeOffLabel: "Ponto de atenção",
     sciBaseLabel: "Base científica",
     priorities: {
-      water: "💧 Economizar água",
-      soil: "🌱 Melhorar o solo",
-      climate: "🌡️ Resistir ao clima",
-      erosion: "⛰️ Conter erosão",
+      water: "Economizar água",
+      soil: "Melhorar o solo",
+      climate: "Resistir ao clima",
+      erosion: "Conter erosão",
     },
     zones: {
       tropicalArid: "Tropical / Subtropical Árido e Semiárido",

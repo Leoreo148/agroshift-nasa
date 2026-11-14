@@ -1,10 +1,11 @@
 import type { Lang } from "@/lib/i18n";
+import type { NdviTrend } from "@/lib/providers/modisNdvi";
 
 export type RiskLevel = "good" | "warn" | "alert";
 export type AgroZone = "tropicalArid" | "tropicalHumid" | "highland" | "temperate";
 
 export interface DiagnosticCard {
-  id: "water" | "heat" | "health" | "erosion";
+  id: "water" | "heat" | "health" | "erosion" | "vegetation";
   title: string;
   level: RiskLevel;
   statusLabel: string;
@@ -52,6 +53,7 @@ const COPY: Record<
     };
     health: Record<RiskLevel, { title: string; status: string; desc: string }>;
     erosion: Record<RiskLevel, { title: string; status: string; desc: string }>;
+    vegetation: Record<RiskLevel, { title: string; status: string; desc: string }>;
     headlineOk: string;
     headlineAlert: (items: string) => string;
     headlineWarn: (items: string) => string;
@@ -127,6 +129,23 @@ const COPY: Record<
         title: "Soil protection",
         status: "Stable terrain",
         desc: "Gentle slope with low risk of soil wash-off during rain.",
+      },
+    },
+    vegetation: {
+      alert: {
+        title: "Vegetation vigor (MODIS NDVI)",
+        status: "Declining vigor",
+        desc: "Satellite greenness has dropped noticeably over the last ~2 months. Check for water stress, pests, or harvest/senescence.",
+      },
+      warn: {
+        title: "Vegetation vigor (MODIS NDVI)",
+        status: "Slight decline",
+        desc: "A mild drop in satellite greenness. Worth monitoring alongside soil moisture and rainfall.",
+      },
+      good: {
+        title: "Vegetation vigor (MODIS NDVI)",
+        status: "Stable / growing",
+        desc: "Satellite greenness is stable or increasing, consistent with healthy canopy development.",
       },
     },
     headlineOk: "Your field shows generally stable conditions.",
@@ -206,6 +225,23 @@ const COPY: Record<
         desc: "Relieve prácticamente plano, con bajo riesgo de arrastre de suelo por lluvia.",
       },
     },
+    vegetation: {
+      alert: {
+        title: "Vigor de la vegetación (NDVI MODIS)",
+        status: "Vigor en caída",
+        desc: "El verdor satelital bajó de forma notoria en los últimos ~2 meses. Revisa estrés hídrico, plagas o cosecha/senescencia.",
+      },
+      warn: {
+        title: "Vigor de la vegetación (NDVI MODIS)",
+        status: "Ligera baja",
+        desc: "Una baja leve en el verdor satelital. Conviene vigilarlo junto con la humedad del suelo y la lluvia.",
+      },
+      good: {
+        title: "Vigor de la vegetación (NDVI MODIS)",
+        status: "Estable / creciendo",
+        desc: "El verdor satelital está estable o en aumento, consistente con un dosel foliar sano.",
+      },
+    },
     headlineOk: "Tu campo muestra condiciones estables en general.",
     headlineAlert: (items) =>
       `Atención principal en: ${items}. Una buena rotación puede reducir este riesgo.`,
@@ -281,6 +317,23 @@ const COPY: Record<
         title: "Protection du sol",
         status: "Terrain stable",
         desc: "Relief plat avec faible risque d'érosion hydrique.",
+      },
+    },
+    vegetation: {
+      alert: {
+        title: "Vigueur de la végétation (NDVI MODIS)",
+        status: "Vigueur en baisse",
+        desc: "La verdure satellite a nettement baissé sur les ~2 derniers mois. Vérifiez le stress hydrique, les ravageurs ou la récolte/sénescence.",
+      },
+      warn: {
+        title: "Vigueur de la végétation (NDVI MODIS)",
+        status: "Légère baisse",
+        desc: "Une légère baisse de la verdure satellite. À surveiller avec l'humidité du sol et les pluies.",
+      },
+      good: {
+        title: "Vigueur de la végétation (NDVI MODIS)",
+        status: "Stable / en hausse",
+        desc: "La verdure satellite est stable ou en hausse, cohérente avec un couvert foliaire sain.",
       },
     },
     headlineOk: "Votre parcelle présente des conditions globalement stables.",
@@ -360,6 +413,23 @@ const COPY: Record<
         desc: "Relevo plano com baixo risco de arraste de solo.",
       },
     },
+    vegetation: {
+      alert: {
+        title: "Vigor da vegetação (NDVI MODIS)",
+        status: "Vigor em queda",
+        desc: "O verdor via satélite caiu de forma perceptível nos últimos ~2 meses. Verifique estresse hídrico, pragas ou colheita/senescência.",
+      },
+      warn: {
+        title: "Vigor da vegetação (NDVI MODIS)",
+        status: "Leve queda",
+        desc: "Uma leve queda no verdor via satélite. Vale acompanhar junto com a umidade do solo e a chuva.",
+      },
+      good: {
+        title: "Vigor da vegetação (NDVI MODIS)",
+        status: "Estável / crescendo",
+        desc: "O verdor via satélite está estável ou em alta, consistente com dossel foliar saudável.",
+      },
+    },
     headlineOk: "Sua área apresenta condições estáveis no geral.",
     headlineAlert: (items) =>
       `Atenção principal em: ${items}. Uma boa rotação reduz esse risco.`,
@@ -368,10 +438,26 @@ const COPY: Record<
   },
 };
 
+function buildVegetationCard(
+  ndvi: NdviTrend,
+  copy: (typeof COPY)[Lang]["vegetation"]
+): DiagnosticCard {
+  const level: RiskLevel =
+    ndvi.deltaPct <= -15 ? "alert" : ndvi.deltaPct <= -5 ? "warn" : "good";
+  return {
+    id: "vegetation",
+    title: copy[level].title,
+    level,
+    statusLabel: copy[level].status,
+    explanation: copy[level].desc,
+  };
+}
+
 export function buildFieldDiagnostics(
   climate: ClimateMetrics,
   lang: Lang,
-  fallbackSlopePct?: number
+  fallbackSlopePct?: number,
+  ndvi?: NdviTrend | null
 ): { cards: DiagnosticCard[]; headline: string } {
   const c = COPY[lang];
   const rain = climate.rain30dMm ?? 0;
@@ -459,6 +545,7 @@ export function buildFieldDiagnostics(
   };
 
   const cards = [water, heat, health, erosion];
+  if (ndvi) cards.push(buildVegetationCard(ndvi, c.vegetation));
   const alerts = cards.filter((x) => x.level === "alert").map((x) => x.title.toLowerCase());
   const warns = cards.filter((x) => x.level === "warn").map((x) => x.title.toLowerCase());
 
