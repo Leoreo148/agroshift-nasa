@@ -106,6 +106,11 @@ export interface Translations {
   plantCheckerTitle: string;
   plantCheckerPrompt: string;
   plantCheckerSelect: string;
+  dynamicSearchPlaceholder: string;
+  dynamicSearchButton: string;
+  dynamicSearchLoading: string;
+  dynamicSearchQuickSuggestions: string;
+  dynamicOrCatalog: string;
   techDetailsToggleShow: string;
   techDetailsToggleHide: string;
   citationsToggleShow: string;
@@ -277,6 +282,11 @@ export const T: Record<Lang, Translations> = {
     plantCheckerTitle: "Individual Plant Feasibility Check",
     plantCheckerPrompt: "Wondering if a specific plant will succeed in this exact field?",
     plantCheckerSelect: "Select any crop from the catalog to evaluate...",
+    dynamicSearchPlaceholder: "Type any plant or crop in the world (e.g. Avocado, Coffee, Mango, Pitahaya, Cocoa, Blueberry)...",
+    dynamicSearchButton: "Consult Botanical & Climate API",
+    dynamicSearchLoading: "Consulting Botanical API (Wikipedia/FAO/Gemini) & matching against NASA POWER...",
+    dynamicSearchQuickSuggestions: "Quick API queries:",
+    dynamicOrCatalog: "Or evaluate a benchmark crop from the catalog (26 crops):",
     techDetailsToggleShow: "Show technical climate telemetry (NASA / DEM)",
     techDetailsToggleHide: "Hide technical climate telemetry",
     citationsToggleShow: "Show agronomic citations & thresholds",
@@ -446,6 +456,11 @@ export const T: Record<Lang, Translations> = {
     plantCheckerTitle: "Verificador de Viabilidad de Planta Específica",
     plantCheckerPrompt: "¿Quieres saber si una planta específica es apta para sembrarse aquí?",
     plantCheckerSelect: "Selecciona cualquier cultivo del catálogo para comprobar...",
+    dynamicSearchPlaceholder: "Escribe cualquier planta o cultivo del mundo (ej. Palta / Aguacate, Café, Mango, Pitahaya, Cacao, Arándano)...",
+    dynamicSearchButton: "Consultar API Botánica y Climática",
+    dynamicSearchLoading: "Consultando API Botánica (Wikipedia/FAO/Gemini) y cruzando con telemetría NASA...",
+    dynamicSearchQuickSuggestions: "Consultas rápidas a la API:",
+    dynamicOrCatalog: "O evalúa un cultivo calibrado del catálogo (26 cultivos):",
     techDetailsToggleShow: "Ver telemetría técnica detallada (NASA / DEM)",
     techDetailsToggleHide: "Ocultar telemetría técnica",
     citationsToggleShow: "Ver sustento científico y umbrales",
@@ -615,6 +630,11 @@ export const T: Record<Lang, Translations> = {
     plantCheckerTitle: "Vérificateur de Faisabilité pour Plante Spécifique",
     plantCheckerPrompt: "Voulez-vous vérifier si une plante précise réussira sur cette parcelle ?",
     plantCheckerSelect: "Sélectionnez une culture pour évaluer sa viabilité...",
+    dynamicSearchPlaceholder: "Tapez n'importe quelle plante du monde (ex. Avocat, Café, Mangue, Pitaya, Cacao, Myrtille)...",
+    dynamicSearchButton: "Consulter l'API Botanique & Climat",
+    dynamicSearchLoading: "Consultation de l'API Botanique (Wikipedia/FAO/Gemini) et croisement NASA POWER...",
+    dynamicSearchQuickSuggestions: "Requêtes rapides à l'API :",
+    dynamicOrCatalog: "Ou évaluez une culture calibrée du catalogue (26 cultures) :",
     techDetailsToggleShow: "Afficher la télémétrie technique (NASA / DEM)",
     techDetailsToggleHide: "Masquer la télémétrie technique",
     citationsToggleShow: "Afficher les références agronomiques",
@@ -784,6 +804,11 @@ export const T: Record<Lang, Translations> = {
     plantCheckerTitle: "Verificador de Viabilidade de Planta Específica",
     plantCheckerPrompt: "Deseja verificar se uma planta específica terá sucesso nesta área?",
     plantCheckerSelect: "Selecione qualquer cultura do catálogo para avaliar...",
+    dynamicSearchPlaceholder: "Digite qualquer planta ou cultura do mundo (ex. Abacate, Café, Manga, Pitaya, Cacau, Mirtilo)...",
+    dynamicSearchButton: "Consultar API Botânica e Climática",
+    dynamicSearchLoading: "Consultando API Botânica (Wikipedia/FAO/Gemini) e cruzando com telemetria NASA...",
+    dynamicSearchQuickSuggestions: "Consultas rápidas à API:",
+    dynamicOrCatalog: "Ou avalie uma cultura calibrada do catálogo (26 culturas):",
     techDetailsToggleShow: "Exibir telemetria técnica detalhada (NASA / DEM)",
     techDetailsToggleHide: "Ocultar telemetria técnica",
     citationsToggleShow: "Exibir referências agronômicas",

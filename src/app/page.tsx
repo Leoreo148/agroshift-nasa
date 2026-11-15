@@ -23,7 +23,9 @@ import {
   Satellite,
   Printer,
   AlertTriangle,
+  Search,
 } from "lucide-react";
+import type { DynamicCropResponse } from "@/app/api/crops/evaluate/route";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 import {
   analyzeTrend5y,
@@ -88,6 +90,22 @@ const FEASIBILITY_STYLES = {
   critical: {
     badge: "border-rose/40 bg-rose/10 text-rose",
     dot: "bg-rose",
+  },
+};
+
+const FEASIBILITY_LABELS: Record<"optimal" | "manageable" | "critical", Record<Lang, string>> = {
+  optimal: { en: "Optimal Fit", es: "Apto / Óptimo", fr: "Optimal", pt: "Ideal / Ótimo" },
+  manageable: {
+    en: "Manageable with Mitigation",
+    es: "Manejable con Mitigación",
+    fr: "Gérable avec atténuation",
+    pt: "Manejável com Mitigação",
+  },
+  critical: {
+    en: "Critical Inviability",
+    es: "Inviable / Crítico",
+    fr: "Critique / Inviable",
+    pt: "Inviável / Crítico",
   },
 };
 
@@ -177,6 +195,10 @@ export default function HomePage() {
   const [priority, setPriority] = useState<FarmerPriority>("water");
   const [selectedCategory, setSelectedCategory] = useState<BotanicalGroup | "all">("all");
   const [checkedCropId, setCheckedCropId] = useState<string>("tomato");
+  const [customCropQuery, setCustomCropQuery] = useState<string>("");
+  const [dynamicCropLoading, setDynamicCropLoading] = useState<boolean>(false);
+  const [dynamicCropResult, setDynamicCropResult] = useState<DynamicCropResponse | null>(null);
+  const [dynamicCropError, setDynamicCropError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [expandedCropCitations, setExpandedCropCitations] = useState<Record<string, boolean>>({});
   const [currentCropType, setCurrentCropType] = useState<CurrentCropType>(
@@ -330,6 +352,42 @@ export default function HomePage() {
   const activeLabel = presetMeta
     ? `${presetMeta.name} (${presetMeta.region})`
     : `${t.customParcel} (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+
+  async function handleSearchCropApi(queryToSearch?: string) {
+    const query = (queryToSearch ?? customCropQuery).trim();
+    if (!query || !climate) return;
+
+    setDynamicCropLoading(true);
+    setDynamicCropError(null);
+
+    try {
+      const res = await fetch("/api/crops/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cropName: query,
+          lat,
+          lon,
+          climate,
+          trend5y,
+          ndvi,
+          lang,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Error en la consulta a la API agronómica");
+      }
+
+      const data: DynamicCropResponse = await res.json();
+      setDynamicCropResult(data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "No se pudo consultar la API";
+      setDynamicCropError(msg);
+    } finally {
+      setDynamicCropLoading(false);
+    }
+  }
 
   const agroZone = climate ? detectAgroZone(lat, climate) : null;
 
@@ -1043,9 +1101,9 @@ export default function HomePage() {
           })}
         </div>
 
-        {/* PLANT CHECKER TOOL */}
+        {/* PLANT CHECKER TOOL (DYNAMIC API + CALIBRATED CATALOG) */}
         <div className="mb-6 rounded-2xl border border-cyan/40 bg-void/80 p-4 sm:p-5 shadow-lg">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3">
             <div>
               <h3 className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wider text-cyan">
                 <Sparkles className="h-4 w-4 text-cyan" />
@@ -1055,95 +1113,298 @@ export default function HomePage() {
                 {t.plantCheckerPrompt}
               </p>
             </div>
-            <div className="w-full sm:w-80">
-              <select
-                value={checkedCropId}
-                onChange={(e) => setCheckedCropId(e.target.value)}
-                className="w-full rounded-xl border border-line-strong bg-panel-raised px-3 py-2 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
-              >
-                {CROP_CATALOG.map((crop) => {
-                  const txt = crop.i18n[lang] ?? crop.i18n.es;
-                  return (
-                    <option key={crop.id} value={crop.id}>
-                      {txt.name} ({crop.scientificName})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
 
-          {checkedCrop && (
-            <div className="mt-4 rounded-xl border border-line bg-panel p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-lg font-bold text-ink">{checkedCrop.name}</h4>
-                    <span className="font-mono text-xs italic text-ink-faint">
-                      ({checkedCrop.scientificName})
+            {/* DYNAMIC API SEARCH FORM */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearchCropApi();
+              }}
+              className="mt-1 flex flex-col gap-2 sm:flex-row"
+            >
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+                <input
+                  type="text"
+                  value={customCropQuery}
+                  onChange={(e) => setCustomCropQuery(e.target.value)}
+                  placeholder={t.dynamicSearchPlaceholder}
+                  className="w-full rounded-xl border border-line-strong bg-panel-raised py-2.5 pl-9 pr-3 font-mono text-xs text-ink placeholder:text-ink-faint focus:border-cyan focus:outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={dynamicCropLoading || !customCropQuery.trim() || !climate}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-cyan/50 bg-cyan/15 px-4 py-2.5 font-mono text-xs font-semibold text-cyan transition hover:bg-cyan/25 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {dynamicCropLoading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>{t.dynamicSearchLoading}</span>
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-3.5 w-3.5" />
+                    <span>{t.dynamicSearchButton}</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* QUICK API QUERY CHIPS */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="font-mono text-[11px] text-ink-faint">
+                {t.dynamicSearchQuickSuggestions}
+              </span>
+              {[
+                { label: "🥑 Palta / Aguacate", q: "aguacate" },
+                { label: "☕ Café", q: "cafe" },
+                { label: "🥭 Mango", q: "mango" },
+                { label: "🌵 Pitahaya", q: "pitahaya" },
+                { label: "🍫 Cacao", q: "cacao" },
+                { label: "🍇 Vid / Uva", q: "uva" },
+                { label: "🫐 Arándano", q: "arandano" },
+                { label: "🌾 Quinua", q: "quinua" },
+              ].map((item) => (
+                <button
+                  key={item.q}
+                  type="button"
+                  disabled={dynamicCropLoading || !climate}
+                  onClick={() => {
+                    setCustomCropQuery(item.q);
+                    handleSearchCropApi(item.q);
+                  }}
+                  className="rounded-lg border border-line bg-panel px-2.5 py-1 text-[11px] font-medium text-ink-muted transition hover:border-cyan/40 hover:text-cyan disabled:opacity-50"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* DYNAMIC API ERROR MESSAGE */}
+            {dynamicCropError && (
+              <div className="rounded-lg border border-rose/40 bg-rose/10 px-3 py-2 text-xs text-rose">
+                {dynamicCropError}
+              </div>
+            )}
+
+            {/* DYNAMIC API RESULT CARD */}
+            {dynamicCropResult && (
+              <div className="mt-2 rounded-xl border border-cyan/40 bg-panel p-4 shadow-md transition-all">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-start gap-3.5">
+                    {dynamicCropResult.thumbnailUrl ? (
+                      <img
+                        src={dynamicCropResult.thumbnailUrl}
+                        alt={dynamicCropResult.cropName}
+                        className="h-16 w-16 rounded-xl object-cover border border-line shadow-sm shrink-0"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-xl border border-line bg-void/60 text-cyan shrink-0">
+                        <Sprout className="h-8 w-8" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-lg font-bold text-ink">
+                          {dynamicCropResult.cropName}
+                        </h4>
+                        <span className="font-mono text-xs italic text-ink-faint">
+                          ({dynamicCropResult.scientificName}{dynamicCropResult.family ? ` · ${dynamicCropResult.family}` : ""})
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                        {dynamicCropResult.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-xs font-semibold ${
+                        FEASIBILITY_STYLES[dynamicCropResult.feasibility].badge
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          FEASIBILITY_STYLES[dynamicCropResult.feasibility].dot
+                        }`}
+                      />
+                      {FEASIBILITY_LABELS[dynamicCropResult.feasibility][lang]} ({dynamicCropResult.matchScore}%)
+                    </span>
+                    <span className="font-mono text-[10px] text-ink-faint">
+                      {dynamicCropResult.source === "gemini-2.5-flash-fao"
+                        ? "⚡ Gemini 2.5 Flash + NASA POWER"
+                        : "📚 FAO EcoCrop Engine + NASA POWER"}
                     </span>
                   </div>
-                  <span className="text-xs text-ink-muted">{checkedCrop.category}</span>
                 </div>
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-xs font-semibold ${
-                    FEASIBILITY_STYLES[checkedCrop.feasibility].badge
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      FEASIBILITY_STYLES[checkedCrop.feasibility].dot
-                    }`}
-                  />
-                  {checkedCrop.feasibilityLabel} ({checkedCrop.matchScore}%)
+
+                {/* Limiting factors from API */}
+                {dynamicCropResult.limitingFactors.length > 0 && (
+                  <div className="mt-3 space-y-1.5 rounded-lg border border-amber/40 bg-amber/10 p-3 text-xs text-amber">
+                    <div className="flex items-center gap-1.5 font-semibold">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <span>Factores Limitantes Detectados con Telemetría NASA:</span>
+                    </div>
+                    <ul className="list-disc pl-5 space-y-1 text-ink-muted">
+                      {dynamicCropResult.limitingFactors.map((factor, idx) => (
+                        <li key={idx}>{factor}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Practical recommendations from API */}
+                {dynamicCropResult.recommendations.length > 0 && (
+                  <div className="mt-3 space-y-1.5 rounded-lg border border-green/30 bg-green/5 p-3 text-xs text-green">
+                    <div className="flex items-center gap-1.5 font-semibold">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span>Recomendaciones Agronómicas de Manejo:</span>
+                    </div>
+                    <ul className="list-disc pl-5 space-y-1 text-ink-muted">
+                      {dynamicCropResult.recommendations.map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* FAO Physiological Parameters Grid */}
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 font-mono text-xs">
+                  <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                    <span className="block text-[10px] text-ink-faint">
+                      Demanda Hídrica (FAO-56)
+                    </span>
+                    <span className="font-semibold text-cyan">
+                      ~{dynamicCropResult.faoParameters.waterDemandMm} mm
+                    </span>
+                  </div>
+                  <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                    <span className="block text-[10px] text-ink-faint">
+                      Temperatura Óptima
+                    </span>
+                    <span className="font-semibold text-green">
+                      {dynamicCropResult.faoParameters.tempOptMin}° a {dynamicCropResult.faoParameters.tempOptMax}°C
+                    </span>
+                  </div>
+                  <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                    <span className="block text-[10px] text-ink-faint">
+                      Límite Helada Mortal
+                    </span>
+                    <span className="font-semibold text-rose">
+                      {dynamicCropResult.faoParameters.tempAbsMin}°C
+                    </span>
+                  </div>
+                  <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                    <span className="block text-[10px] text-ink-faint">
+                      Ciclo / Factor Kc
+                    </span>
+                    <span className="font-semibold text-amber">
+                      {dynamicCropResult.faoParameters.cycleDays}d (Kc {dynamicCropResult.faoParameters.kcMid})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SECONDARY SELECTOR FOR 26 BENCHMARK CROPS */}
+            <div className="mt-3 border-t border-line/60 pt-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="font-mono text-xs text-ink-muted">
+                  {t.dynamicOrCatalog}
                 </span>
+                <div className="w-full sm:w-80">
+                  <select
+                    value={checkedCropId}
+                    onChange={(e) => setCheckedCropId(e.target.value)}
+                    className="w-full rounded-xl border border-line-strong bg-panel-raised px-3 py-2 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+                  >
+                    {CROP_CATALOG.map((crop) => {
+                      const txt = crop.i18n[lang] ?? crop.i18n.es;
+                      return (
+                        <option key={crop.id} value={crop.id}>
+                          {txt.name} ({crop.scientificName})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
               </div>
 
-              {checkedCrop.limitingFactor && (
-                <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber" />
-                  <span>{checkedCrop.limitingFactor}</span>
+              {checkedCrop && (
+                <div className="mt-3 rounded-xl border border-line bg-panel p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-bold text-ink">{checkedCrop.name}</h4>
+                        <span className="font-mono text-xs italic text-ink-faint">
+                          ({checkedCrop.scientificName})
+                        </span>
+                      </div>
+                      <span className="text-xs text-ink-muted">{checkedCrop.category}</span>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-xs font-semibold ${
+                        FEASIBILITY_STYLES[checkedCrop.feasibility].badge
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          FEASIBILITY_STYLES[checkedCrop.feasibility].dot
+                        }`}
+                      />
+                      {checkedCrop.feasibilityLabel} ({checkedCrop.matchScore}%)
+                    </span>
+                  </div>
+
+                  {checkedCrop.limitingFactor && (
+                    <div className="mt-2.5 flex items-start gap-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-1.5 text-xs text-amber">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber" />
+                      <span>{checkedCrop.limitingFactor}</span>
+                    </div>
+                  )}
+
+                  <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4 font-mono text-xs">
+                    <div className="rounded-lg border border-line bg-void/60 p-2">
+                      <span className="block text-[10px] text-ink-faint">
+                        Demanda Hídrica
+                      </span>
+                      <span className="font-semibold text-cyan">
+                        {checkedCrop.waterRangeMm[0]}–{checkedCrop.waterRangeMm[1]} mm
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-line bg-void/60 p-2">
+                      <span className="block text-[10px] text-ink-faint">
+                        Temp. Óptima
+                      </span>
+                      <span className="font-semibold text-amber">
+                        {checkedCrop.ecoCropTempC[1]}–{checkedCrop.ecoCropTempC[2]} °C
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-line bg-void/60 p-2">
+                      <span className="block text-[10px] text-ink-faint">
+                        Fijación N
+                      </span>
+                      <span className="font-semibold text-green">
+                        {checkedCrop.bnfKgNHa[1] > 0
+                          ? `${checkedCrop.bnfKgNHa[0]}–${checkedCrop.bnfKgNHa[1]} kg N/ha`
+                          : "0 kg N"}
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-line bg-void/60 p-2">
+                      <span className="block text-[10px] text-ink-faint">
+                        Ciclo
+                      </span>
+                      <span className="font-semibold text-ink">
+                        {checkedCrop.cycleDays[0]}–{checkedCrop.cycleDays[1]} días
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
-
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 font-mono text-xs">
-                <div className="rounded-lg border border-line bg-void/60 p-2.5">
-                  <span className="block text-[10px] text-ink-faint">
-                    Demanda Hídrica (FAO-56)
-                  </span>
-                  <span className="font-semibold text-cyan">
-                    {checkedCrop.waterRangeMm[0]}–{checkedCrop.waterRangeMm[1]} mm
-                  </span>
-                </div>
-                <div className="rounded-lg border border-line bg-void/60 p-2.5">
-                  <span className="block text-[10px] text-ink-faint">
-                    Temperatura Óptima
-                  </span>
-                  <span className="font-semibold text-amber">
-                    {checkedCrop.ecoCropTempC[1]}–{checkedCrop.ecoCropTempC[2]} °C
-                  </span>
-                </div>
-                <div className="rounded-lg border border-line bg-void/60 p-2.5">
-                  <span className="block text-[10px] text-ink-faint">
-                    Fijación de Nitrógeno
-                  </span>
-                  <span className="font-semibold text-green">
-                    {checkedCrop.bnfKgNHa[1] > 0
-                      ? `${checkedCrop.bnfKgNHa[0]}–${checkedCrop.bnfKgNHa[1]} kg N/ha`
-                      : "0 kg N"}
-                  </span>
-                </div>
-                <div className="rounded-lg border border-line bg-void/60 p-2.5">
-                  <span className="block text-[10px] text-ink-faint">
-                    Ciclo a Cosecha
-                  </span>
-                  <span className="font-semibold text-ink">
-                    {checkedCrop.cycleDays[0]}–{checkedCrop.cycleDays[1]} días
-                  </span>
-                </div>
-              </div>
             </div>
-          )}
+          </div>
         </div>
 
         {loading || rotations.length === 0 ? (
