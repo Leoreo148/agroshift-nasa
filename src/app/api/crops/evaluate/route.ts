@@ -123,6 +123,23 @@ const KNOWN_ECOCROPS: Record<string, FaoCropDefaults> = {
   wheat: { scientificName: "Triticum aestivum", family: "Poaceae", tempOptMin: 14, tempOptMax: 23, tempAbsMin: -4, tempAbsMax: 33, waterDemandMm: 450, kcMid: 1.15, cycleDays: 130, frostSensitive: false },
   quinua: { scientificName: "Chenopodium quinoa", family: "Amaranthaceae", tempOptMin: 12, tempOptMax: 20, tempAbsMin: -4, tempAbsMax: 32, waterDemandMm: 350, kcMid: 0.95, cycleDays: 140, frostSensitive: false },
   quinoa: { scientificName: "Chenopodium quinoa", family: "Amaranthaceae", tempOptMin: 12, tempOptMax: 20, tempAbsMin: -4, tempAbsMax: 32, waterDemandMm: 350, kcMid: 0.95, cycleDays: 140, frostSensitive: false },
+  arroz: { scientificName: "Oryza sativa", family: "Poaceae", tempOptMin: 22, tempOptMax: 32, tempAbsMin: 12, tempAbsMax: 40, waterDemandMm: 1100, kcMid: 1.2, cycleDays: 140, frostSensitive: true },
+  rice: { scientificName: "Oryza sativa", family: "Poaceae", tempOptMin: 22, tempOptMax: 32, tempAbsMin: 12, tempAbsMax: 40, waterDemandMm: 1100, kcMid: 1.2, cycleDays: 140, frostSensitive: true },
+  fresa: { scientificName: "Fragaria x ananassa", family: "Rosaceae", tempOptMin: 15, tempOptMax: 24, tempAbsMin: -5, tempAbsMax: 32, waterDemandMm: 450, kcMid: 0.85, cycleDays: 180, frostSensitive: false },
+  frutilla: { scientificName: "Fragaria x ananassa", family: "Rosaceae", tempOptMin: 15, tempOptMax: 24, tempAbsMin: -5, tempAbsMax: 32, waterDemandMm: 450, kcMid: 0.85, cycleDays: 180, frostSensitive: false },
+  strawberry: { scientificName: "Fragaria x ananassa", family: "Rosaceae", tempOptMin: 15, tempOptMax: 24, tempAbsMin: -5, tempAbsMax: 32, waterDemandMm: 450, kcMid: 0.85, cycleDays: 180, frostSensitive: false },
+  manzana: { scientificName: "Malus domestica", family: "Rosaceae", tempOptMin: 15, tempOptMax: 24, tempAbsMin: -25, tempAbsMax: 35, waterDemandMm: 700, kcMid: 0.95, cycleDays: 365, frostSensitive: false },
+  manzano: { scientificName: "Malus domestica", family: "Rosaceae", tempOptMin: 15, tempOptMax: 24, tempAbsMin: -25, tempAbsMax: 35, waterDemandMm: 700, kcMid: 0.95, cycleDays: 365, frostSensitive: false },
+  apple: { scientificName: "Malus domestica", family: "Rosaceae", tempOptMin: 15, tempOptMax: 24, tempAbsMin: -25, tempAbsMax: 35, waterDemandMm: 700, kcMid: 0.95, cycleDays: 365, frostSensitive: false },
+  lechuga: { scientificName: "Lactuca sativa", family: "Asteraceae", tempOptMin: 14, tempOptMax: 20, tempAbsMin: 2, tempAbsMax: 28, waterDemandMm: 350, kcMid: 1.0, cycleDays: 65, frostSensitive: true },
+  lettuce: { scientificName: "Lactuca sativa", family: "Asteraceae", tempOptMin: 14, tempOptMax: 20, tempAbsMin: 2, tempAbsMax: 28, waterDemandMm: 350, kcMid: 1.0, cycleDays: 65, frostSensitive: true },
+  zanahoria: { scientificName: "Daucus carota", family: "Apiaceae", tempOptMin: 16, tempOptMax: 22, tempAbsMin: 0, tempAbsMax: 30, waterDemandMm: 400, kcMid: 1.05, cycleDays: 95, frostSensitive: false },
+  carrot: { scientificName: "Daucus carota", family: "Apiaceae", tempOptMin: 16, tempOptMax: 22, tempAbsMin: 0, tempAbsMax: 30, waterDemandMm: 400, kcMid: 1.05, cycleDays: 95, frostSensitive: false },
+  cebolla: { scientificName: "Allium cepa", family: "Amaryllidaceae", tempOptMin: 15, tempOptMax: 25, tempAbsMin: -2, tempAbsMax: 35, waterDemandMm: 450, kcMid: 1.05, cycleDays: 130, frostSensitive: false },
+  onion: { scientificName: "Allium cepa", family: "Amaryllidaceae", tempOptMin: 15, tempOptMax: 25, tempAbsMin: -2, tempAbsMax: 35, waterDemandMm: 450, kcMid: 1.05, cycleDays: 130, frostSensitive: false },
+  soja: { scientificName: "Glycine max", family: "Fabaceae", tempOptMin: 20, tempOptMax: 30, tempAbsMin: 6, tempAbsMax: 38, waterDemandMm: 550, kcMid: 1.15, cycleDays: 125, frostSensitive: true },
+  soya: { scientificName: "Glycine max", family: "Fabaceae", tempOptMin: 20, tempOptMax: 30, tempAbsMin: 6, tempAbsMax: 38, waterDemandMm: 550, kcMid: 1.15, cycleDays: 125, frostSensitive: true },
+  soybean: { scientificName: "Glycine max", family: "Fabaceae", tempOptMin: 20, tempOptMax: 30, tempAbsMin: 6, tempAbsMax: 38, waterDemandMm: 550, kcMid: 1.15, cycleDays: 125, frostSensitive: true },
 };
 
 function normalizeQuery(q: string): string {

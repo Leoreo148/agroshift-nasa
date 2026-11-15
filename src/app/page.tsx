@@ -260,6 +260,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setAiPlan(null);
+    setDynamicCropResult(null);
   }, [lat, lon, priority, currentCropType, lang]);
 
   // NDVI (MODIS) is a slow, best-effort satellite lookup — fetched on its own
@@ -1197,6 +1198,9 @@ export default function HomePage() {
                       <img
                         src={dynamicCropResult.thumbnailUrl}
                         alt={dynamicCropResult.cropName}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = "none";
+                        }}
                         className="h-16 w-16 rounded-xl object-cover border border-line shadow-sm shrink-0"
                       />
                     ) : (
