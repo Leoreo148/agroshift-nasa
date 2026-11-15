@@ -31,7 +31,6 @@ import {
 } from "lucide-react";
 import type { GeoResult } from "@/app/api/geocode/route";
 import type { DynamicCropResponse } from "@/app/api/crops/evaluate/route";
-import { FARM_PRESETS } from "@/data/farms";
 import { generateParcelPdf, type DossierData } from "@/lib/pdfGenerator";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 
@@ -566,7 +565,7 @@ export default function HomePage() {
         lon,
         agroZoneLabel: t.zones[agroZone],
         elevationM: climate.elevationM ?? 200,
-        slopePct: climate.slopePct ?? (selectedPreset?.slopePct ?? 2),
+        slopePct: climate.slopePct ?? 2,
         currentCropType,
         currentCropLabel: t.currentCropTypes[currentCropType],
         climate,
@@ -1724,7 +1723,7 @@ export default function HomePage() {
                     <p><span className="text-ink-faint">Coordenadas:</span> Lat {lat.toFixed(4)}, Lon {lon.toFixed(4)}</p>
                     <p><span className="text-ink-faint">Zona:</span> {t.zones[agroZone]}</p>
                     <p><span className="text-ink-faint">Elevación SRTM:</span> {climate.elevationM ?? 200} m</p>
-                    <p><span className="text-ink-faint">Pendiente:</span> ~{climate.slopePct ?? (selectedPreset?.slopePct ?? 2)}%</p>
+                    <p><span className="text-ink-faint">Pendiente:</span> ~{climate.slopePct ?? 2}%</p>
                   </div>
                 </div>
                 <div className="mt-3 border-t border-line/50 pt-2 text-xs">
