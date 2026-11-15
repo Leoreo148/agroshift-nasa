@@ -47,6 +47,13 @@ import type { Forecast7d, HistoryYear } from "@/app/api/climate/route";
 import type { AdvisorResponse } from "@/app/api/ai-advisor/route";
 import type { NdviTrend } from "@/lib/providers/modisNdvi";
 import Logo from "@/components/Logo";
+import type { MapSelectionMode } from "@/components/FarmMap";
+import {
+  computePolygonMetrics,
+  formatHectares,
+  formatPerimeter,
+  type LatLon,
+} from "@/lib/geo";
 
 const FarmMap = dynamic(() => import("@/components/FarmMap"), {
   ssr: false,
@@ -180,6 +187,8 @@ export default function HomePage() {
   const [lonInput, setLonInput] = useState<string>(String(FARM_PRESETS[0].lon));
   const [targetZoom, setTargetZoom] = useState<number | undefined>(undefined);
   const [zoomTrigger, setZoomTrigger] = useState<number>(0);
+  const [selectionMode, setSelectionMode] = useState<MapSelectionMode>("point");
+  const [polygonPoints, setPolygonPoints] = useState<LatLon[]>([]);
 
   const [placeQuery, setPlaceQuery] = useState<string>("");
   const [placeResults, setPlaceResults] = useState<GeoResult[]>([]);
@@ -348,10 +357,43 @@ export default function HomePage() {
       .join(", ");
   }
 
+  const polygonMetrics = computePolygonMetrics(polygonPoints);
+
+  useEffect(() => {
+    if (
+      selectionMode !== "perimeter" ||
+      polygonPoints.length < 3 ||
+      !polygonMetrics
+    ) {
+      return;
+    }
+
+    const { lat: cLat, lon: cLon } = polygonMetrics.centroid;
+    const timer = window.setTimeout(() => {
+      setSelectedPlace(null);
+      setLat(cLat);
+      setLon(cLon);
+      setLatInput(String(cLat));
+      setLonInput(String(cLon));
+    }, 550);
+
+    return () => window.clearTimeout(timer);
+    // Sync parcel centroid to NASA/MODIS only after user finishes placing corners
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionMode, polygonPoints]);
+
+  function handleChangeSelectionMode(nextMode: MapSelectionMode) {
+    setSelectionMode(nextMode);
+    if (nextMode === "point") {
+      setPolygonPoints([]);
+    }
+  }
+
   function handleSelectGeoResult(result: GeoResult) {
     setSelectedPlace(result);
     setPlaceQuery(formatPlaceLabel(result));
     setPlaceOpen(false);
+    setPolygonPoints([]);
     setLat(result.lat);
     setLon(result.lon);
     setLatInput(String(result.lat));
@@ -385,6 +427,8 @@ export default function HomePage() {
       return;
     }
     setSelectedPlace(null);
+    setSelectionMode("point");
+    setPolygonPoints([]);
     setLat(Number(parsedLat.toFixed(4)));
     setLon(Number(parsedLon.toFixed(4)));
     setTargetZoom(10);
@@ -402,6 +446,8 @@ export default function HomePage() {
         const myLat = Number(pos.coords.latitude.toFixed(4));
         const myLon = Number(pos.coords.longitude.toFixed(4));
         setSelectedPlace(null);
+        setSelectionMode("point");
+        setPolygonPoints([]);
         setLat(myLat);
         setLon(myLon);
         setLatInput(String(myLat));
@@ -418,9 +464,16 @@ export default function HomePage() {
     );
   }
 
-  const activeLabel = selectedPlace
-    ? formatPlaceLabel(selectedPlace)
-    : `${t.customParcel} (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+  const hasDelimitedArea =
+    selectionMode === "perimeter" &&
+    polygonPoints.length >= 3 &&
+    polygonMetrics !== null;
+
+  const activeLabel = hasDelimitedArea
+    ? `${t.delimitedParcel} (${formatHectares(polygonMetrics.areaHa)} ha)`
+    : selectedPlace
+      ? formatPlaceLabel(selectedPlace)
+      : `${t.customParcel} (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
 
   async function handleSearchCropApi(queryToSearch?: string) {
     const query = (queryToSearch ?? customCropQuery).trim();
@@ -701,9 +754,24 @@ export default function HomePage() {
               lon={lon}
               label={activeLabel}
               onSelectCoords={handleMapClick}
+              selectionMode={selectionMode}
+              onChangeSelectionMode={handleChangeSelectionMode}
+              polygonPoints={polygonPoints}
+              onPolygonChange={setPolygonPoints}
+              areaHa={
+                polygonMetrics && polygonPoints.length >= 3
+                  ? polygonMetrics.areaHa
+                  : null
+              }
               satelliteLabel={t.satellite}
               mapLabel={t.mapView}
               hintText={t.mapHint}
+              modePointLabel={t.modePointLabel}
+              modePerimeterLabel={t.modePerimeterLabel}
+              perimeterHint={t.perimeterHint}
+              perimeterUndoLabel={t.perimeterUndoLabel}
+              perimeterClearLabel={t.perimeterClearLabel}
+              verticesLabel={t.verticesCount(polygonPoints.length)}
               targetZoom={targetZoom}
               zoomTrigger={zoomTrigger}
             />
@@ -725,11 +793,26 @@ export default function HomePage() {
               <h3 className="mt-1 text-lg font-semibold text-ink">
                 {activeLabel}
               </h3>
-              <p className="mt-1 text-xs text-ink-faint">
-                {selectedPlace && selectedPlace.kind !== "place"
-                  ? t.searchCountryHint
-                  : t.freeLocationNote}
-              </p>
+              {hasDelimitedArea && polygonMetrics ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-lg border border-cyan/40 bg-cyan/10 px-2.5 py-1 font-mono text-xs font-semibold text-cyan">
+                    {formatHectares(polygonMetrics.areaHa)} ha
+                  </span>
+                  <span className="rounded-lg border border-line bg-panel px-2.5 py-1 font-mono text-[11px] text-ink-muted">
+                    {t.perimeterLengthLabel}:{" "}
+                    {formatPerimeter(polygonMetrics.perimeterM)}
+                  </span>
+                  <span className="font-mono text-[11px] text-ink-faint">
+                    {t.verticesCount(polygonPoints.length)}
+                  </span>
+                </div>
+              ) : (
+                <p className="mt-1 text-xs text-ink-faint">
+                  {selectedPlace && selectedPlace.kind !== "place"
+                    ? t.searchCountryHint
+                    : t.freeLocationNote}
+                </p>
+              )}
 
               <div className="mt-5 border-t border-line pt-4">
                 <div className="mb-3 flex items-center justify-between">

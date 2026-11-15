@@ -108,6 +108,14 @@ export interface Translations {
     region: string;
     place: string;
   };
+  modePointLabel: string;
+  modePerimeterLabel: string;
+  perimeterHint: string;
+  perimeterUndoLabel: string;
+  perimeterClearLabel: string;
+  perimeterLengthLabel: string;
+  delimitedParcel: string;
+  verticesCount: (n: number) => string;
   ndviLoadingLabel: string;
   printDossierLabel: string;
   cropCategories: Record<BotanicalGroup | "all", string>;
@@ -285,6 +293,15 @@ export const T: Record<Lang, Translations> = {
       region: "Region",
       place: "Place",
     },
+    modePointLabel: "Single point",
+    modePerimeterLabel: "Perimeter (ha)",
+    perimeterHint:
+      "Click corners around your field to trace its perimeter (min. 3 points)",
+    perimeterUndoLabel: "Undo",
+    perimeterClearLabel: "Clear",
+    perimeterLengthLabel: "Perimeter",
+    delimitedParcel: "Delimited parcel",
+    verticesCount: (n: number) => `${n} pts`,
     ndviLoadingLabel: "Querying 250m 16-day NDVI vegetation vigor from NASA/ORNL DAAC...",
     printDossierLabel: "Print Dossier",
     cropCategories: {
@@ -469,6 +486,15 @@ export const T: Record<Lang, Translations> = {
       region: "Región",
       place: "Lugar",
     },
+    modePointLabel: "Punto único",
+    modePerimeterLabel: "Perímetro (ha)",
+    perimeterHint:
+      "Haz clic en las esquinas de tu parcela para trazar el perímetro (mín. 3 puntos)",
+    perimeterUndoLabel: "Deshacer",
+    perimeterClearLabel: "Limpiar",
+    perimeterLengthLabel: "Perímetro",
+    delimitedParcel: "Parcela delimitada",
+    verticesCount: (n: number) => `${n} pts`,
     ndviLoadingLabel: "Consultando vigor vegetal NDVI a 250m (compuesto 16d) en NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
     cropCategories: {
@@ -653,6 +679,15 @@ export const T: Record<Lang, Translations> = {
       region: "Région",
       place: "Lieu",
     },
+    modePointLabel: "Point unique",
+    modePerimeterLabel: "Périmètre (ha)",
+    perimeterHint:
+      "Cliquez sur les coins de la parcelle pour tracer le périmètre (min. 3 points)",
+    perimeterUndoLabel: "Annuler",
+    perimeterClearLabel: "Effacer",
+    perimeterLengthLabel: "Périmètre",
+    delimitedParcel: "Parcelle délimitée",
+    verticesCount: (n: number) => `${n} pts`,
     ndviLoadingLabel: "Interrogation de la vigueur végétale NDVI (composite 16j) auprès de NASA/ORNL DAAC...",
     printDossierLabel: "Imprimer le dossier",
     cropCategories: {
@@ -837,6 +872,15 @@ export const T: Record<Lang, Translations> = {
       region: "Região",
       place: "Local",
     },
+    modePointLabel: "Ponto único",
+    modePerimeterLabel: "Perímetro (ha)",
+    perimeterHint:
+      "Clique nos cantos do talhão para traçar o perímetro (mín. 3 pontos)",
+    perimeterUndoLabel: "Desfazer",
+    perimeterClearLabel: "Limpar",
+    perimeterLengthLabel: "Perímetro",
+    delimitedParcel: "Talhão delimitado",
+    verticesCount: (n: number) => `${n} pts`,
     ndviLoadingLabel: "Consultando vigor de vegetação NDVI (composto 16d) em NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
     cropCategories: {
