@@ -110,3 +110,29 @@
     scroll-behavior: auto !important;
   }
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  .no-print,
+  button,
+  .scanline,
+  .bg-reticle {
+    display: none !important;
+  }
+
+  section,
+  div {
+    box-shadow: none !important;
+    border-color: #cbd5e1 !important;
+    background-color: transparent !important;
+    color: #0f172a !important;
+  }
+
+  h1, h2, h3, h4, span, p, li, strong {
+    color: #0f172a !important;
+  }
+}

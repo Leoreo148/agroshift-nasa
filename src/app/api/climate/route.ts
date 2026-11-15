@@ -157,20 +157,40 @@ export async function GET(req: NextRequest) {
     `?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
     `&hourly=soil_moisture_0_to_7cm&forecast_days=1&timezone=auto`;
 
+  const currentYear = new Date().getUTCFullYear();
+  const endYear = currentYear - 1;
+  const startYear = endYear - 4;
+  const targetYears: number[] = [];
+  for (let y = startYear; y <= endYear; y++) {
+    targetYears.push(y);
+  }
+
   const historyUrl =
     `https://power.larc.nasa.gov/api/temporal/monthly/point` +
     `?parameters=T2M,PRECTOTCORR,GWETTOP` +
     `&community=AG&longitude=${lon.toFixed(4)}&latitude=${lat.toFixed(4)}` +
-    `&start=2021&end=2025&format=JSON`;
+    `&start=${startYear}&end=${endYear}&format=JSON`;
 
   try {
     const [nasaRes, elevRes, soilRes, forecastRes, historyRes] =
       await Promise.allSettled([
-        fetch(nasaUrl, { next: { revalidate: 3600 } }),
-        fetch(elevUrl, { next: { revalidate: 86400 } }),
-        fetch(soilUrl, { next: { revalidate: 3600 } }),
+        fetch(nasaUrl, {
+          signal: AbortSignal.timeout(12000),
+          next: { revalidate: 3600 },
+        }),
+        fetch(elevUrl, {
+          signal: AbortSignal.timeout(8000),
+          next: { revalidate: 86400 },
+        }),
+        fetch(soilUrl, {
+          signal: AbortSignal.timeout(8000),
+          next: { revalidate: 3600 },
+        }),
         fetchMeteomaticsForecast(lat, lon),
-        fetch(historyUrl, { next: { revalidate: 86400 } }),
+        fetch(historyUrl, {
+          signal: AbortSignal.timeout(12000),
+          next: { revalidate: 86400 },
+        }),
       ]);
 
     if (nasaRes.status !== "fulfilled" || !nasaRes.value.ok) {
@@ -258,7 +278,7 @@ export async function GET(req: NextRequest) {
         return months.reduce((a, b) => a + b, 0) / months.length;
       };
 
-      for (const yr of [2021, 2022, 2023, 2024, 2025]) {
+      for (const yr of targetYears) {
         const t = readYearVal(hp.T2M, yr);
         const p = readYearVal(hp.PRECTOTCORR, yr);
         const w = readYearVal(hp.GWETTOP, yr);

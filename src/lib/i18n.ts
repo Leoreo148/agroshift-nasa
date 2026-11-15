@@ -100,6 +100,8 @@ export interface Translations {
   aiCheckLabel: string;
   aiSourceGemini: string;
   aiSourceFallback: string;
+  ndviLoadingLabel: string;
+  printDossierLabel: string;
 }
 
 export const T: Record<Lang, Translations> = {
@@ -250,6 +252,8 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "Verify locally",
     aiSourceGemini: "Gemini 2.5 Flash · Grounded in NASA & FAO data",
     aiSourceFallback: "Deterministic agronomic summary",
+    ndviLoadingLabel: "Querying 250m 16-day NDVI vegetation vigor from NASA/ORNL DAAC...",
+    printDossierLabel: "Print Dossier",
   },
   es: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -398,6 +402,8 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "Verificar en campo",
     aiSourceGemini: "Gemini 2.5 Flash · Basado en datos NASA y FAO",
     aiSourceFallback: "Resumen agronómico determinista",
+    ndviLoadingLabel: "Consultando vigor vegetal NDVI a 250m (compuesto 16d) en NASA/ORNL DAAC...",
+    printDossierLabel: "Imprimir Ficha",
   },
   fr: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -546,6 +552,8 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "À vérifier sur place",
     aiSourceGemini: "Gemini 2.5 Flash · Basé sur données NASA & FAO",
     aiSourceFallback: "Synthèse agronomique déterministe",
+    ndviLoadingLabel: "Interrogation de la vigueur végétale NDVI (composite 16j) auprès de NASA/ORNL DAAC...",
+    printDossierLabel: "Imprimer le dossier",
   },
   pt: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -694,5 +702,7 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "Verificar no campo",
     aiSourceGemini: "Gemini 2.5 Flash · Baseado em dados NASA e FAO",
     aiSourceFallback: "Resumo agronômico determinístico",
+    ndviLoadingLabel: "Consultando vigor de vegetação NDVI (composto 16d) em NASA/ORNL DAAC...",
+    printDossierLabel: "Imprimir Ficha",
   },
 };

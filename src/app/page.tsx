@@ -21,6 +21,7 @@ import {
   Globe,
   Sparkles,
   Satellite,
+  Printer,
 } from "lucide-react";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 import {
@@ -149,6 +150,7 @@ export default function HomePage() {
   const [forecast, setForecast] = useState<Forecast7d | null>(null);
   const [history5y, setHistory5y] = useState<HistoryYear[]>([]);
   const [ndvi, setNdvi] = useState<NdviTrend | null>(null);
+  const [ndviLoading, setNdviLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState<boolean>(false);
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
@@ -220,6 +222,7 @@ export default function HomePage() {
   useEffect(() => {
     let active = true;
     setNdvi(null);
+    setNdviLoading(true);
 
     fetch(`/api/ndvi?lat=${lat}&lon=${lon}`)
       .then((res) => res.json())
@@ -228,6 +231,9 @@ export default function HomePage() {
       })
       .catch(() => {
         if (active) setNdvi(null);
+      })
+      .finally(() => {
+        if (active) setNdviLoading(false);
       });
 
     return () => {
@@ -360,22 +366,34 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="flex w-fit items-center gap-1 rounded-xl border border-line bg-panel p-1">
-            <Globe className="mx-1.5 h-3.5 w-3.5 text-ink-faint" />
-            {(["en", "es", "fr", "pt"] as Lang[]).map((code) => (
-              <button
-                key={code}
-                type="button"
-                onClick={() => setLang(code)}
-                className={`rounded-lg px-2.5 py-1 font-mono text-xs font-semibold transition ${
-                  lang === code
-                    ? "bg-panel-raised text-ink"
-                    : "text-ink-faint hover:text-ink"
-                }`}
-              >
-                {LANG_LABELS[code]}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="no-print inline-flex items-center gap-1.5 rounded-xl border border-line bg-panel px-3 py-1.5 font-mono text-xs font-semibold text-ink-muted transition hover:border-cyan/40 hover:text-cyan"
+              title={t.printDossierLabel}
+            >
+              <Printer className="h-3.5 w-3.5 text-cyan" />
+              <span>{t.printDossierLabel}</span>
+            </button>
+
+            <div className="flex w-fit items-center gap-1 rounded-xl border border-line bg-panel p-1">
+              <Globe className="mx-1.5 h-3.5 w-3.5 text-ink-faint" />
+              {(["en", "es", "fr", "pt"] as Lang[]).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setLang(code)}
+                  className={`rounded-lg px-2.5 py-1 font-mono text-xs font-semibold transition ${
+                    lang === code
+                      ? "bg-panel-raised text-ink"
+                      : "text-ink-faint hover:text-ink"
+                  }`}
+                >
+                  {LANG_LABELS[code]}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </header>
@@ -684,7 +702,17 @@ export default function HomePage() {
               const vegetationCard = diagnostic.cards.find(
                 (card) => card.id === "vegetation"
               );
-              if (!vegetationCard) return null;
+              if (!vegetationCard) {
+                if (ndviLoading) {
+                  return (
+                    <div className="mt-4 flex items-center gap-3 rounded-2xl border border-cyan/30 bg-cyan/5 p-4 font-mono text-xs text-cyan">
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-cyan" />
+                      <span>[MODIS/VIIRS] {t.ndviLoadingLabel}</span>
+                    </div>
+                  );
+                }
+                return null;
+              }
               const style = LEVEL_STYLES[vegetationCard.level];
               return (
                 <div

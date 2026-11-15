@@ -65,9 +65,15 @@ export default function FarmMap({
       );
     });
 
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize();
+    });
+    resizeObserver.observe(containerRef.current);
+
     mapRef.current = map;
 
     return () => {
+      resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
