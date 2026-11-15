@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { ClimateMetrics, Trend5ySummary } from "@/lib/diagnostics";
 import type { Lang } from "@/lib/i18n";
 import type { CurrentCropType, FarmerPriority } from "@/lib/rotations";
+import type { NdviTrend } from "@/lib/providers/modisNdvi";
 
 interface AdvisorRequest {
   lat: number;
@@ -12,6 +13,7 @@ interface AdvisorRequest {
   currentCropType: CurrentCropType;
   climate: ClimateMetrics;
   trend5y: Trend5ySummary | null;
+  ndvi?: NdviTrend | null;
   topRotations: Array<{
     name: string;
     scientificName: string;
@@ -34,12 +36,15 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
   const eo = body.climate.eoMmDay ?? 4.5;
   const slope = body.climate.slopePct ?? 2;
   const isPerennial = body.currentCropType === "perennial";
+  const ndviInfo = body.ndvi
+    ? `MODIS NDVI: ${body.ndvi.current.toFixed(2)} (${body.ndvi.deltaPct > 0 ? "+" : ""}${body.ndvi.deltaPct}%)`
+    : null;
 
   const copy: Record<Lang, Omit<AdvisorResponse, "source">> = {
     en: {
       diagnosisSummary: body.trend5y
-        ? `${body.trend5y.badge} (${body.trend5y.explanation}) with reference evaporation Eo=${eo} mm/day.`
-        : `Current Eo is ${eo} mm/day on a ~${slope}% slope in ${body.agroZoneLabel}.`,
+        ? `${body.trend5y.badge} (${body.trend5y.explanation}) with reference evaporation Eo=${eo} mm/day${ndviInfo ? ` · ${ndviInfo}` : ""}.`
+        : `Current Eo is ${eo} mm/day on a ~${slope}% slope in ${body.agroZoneLabel}${ndviInfo ? ` (${ndviInfo})` : ""}.`,
       actionSteps: [
         isPerennial
           ? `Keep your perennial orchard intact and establish ${best?.name ?? "a low cover mix"} between alleys to cut soil evaporation.`
@@ -52,8 +57,8 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
     },
     es: {
       diagnosisSummary: body.trend5y
-        ? `${body.trend5y.badge} (${body.trend5y.explanation}) con evaporación Eo=${eo} mm/día.`
-        : `Evaporación Eo=${eo} mm/día en pendiente de ~${slope}% (${body.agroZoneLabel}).`,
+        ? `${body.trend5y.badge} (${body.trend5y.explanation}) con evaporación Eo=${eo} mm/día${ndviInfo ? ` · ${ndviInfo}` : ""}.`
+        : `Evaporación Eo=${eo} mm/día en pendiente de ~${slope}% (${body.agroZoneLabel})${ndviInfo ? ` · ${ndviInfo}` : ""}.`,
       actionSteps: [
         isPerennial
           ? `Mantén tu cultivo permanente y siembra ${best?.name ?? "cobertura viva"} entre hileras para frenar evaporación y erosión.`
@@ -66,8 +71,8 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
     },
     fr: {
       diagnosisSummary: body.trend5y
-        ? `${body.trend5y.badge} (${body.trend5y.explanation}) avec Eo=${eo} mm/jour.`
-        : `Évaporation Eo=${eo} mm/jour sur pente ~${slope}% (${body.agroZoneLabel}).`,
+        ? `${body.trend5y.badge} (${body.trend5y.explanation}) avec Eo=${eo} mm/jour${ndviInfo ? ` · ${ndviInfo}` : ""}.`
+        : `Évaporation Eo=${eo} mm/jour sur pente ~${slope}% (${body.agroZoneLabel})${ndviInfo ? ` · ${ndviInfo}` : ""}.`,
       actionSteps: [
         isPerennial
           ? `Conservez votre verger et implantez ${best?.name ?? "un couvert végétal"} entre les rangs.`
@@ -80,8 +85,8 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
     },
     pt: {
       diagnosisSummary: body.trend5y
-        ? `${body.trend5y.badge} (${body.trend5y.explanation}) com evaporação Eo=${eo} mm/dia.`
-        : `Evaporação Eo=${eo} mm/dia em declive de ~${slope}% (${body.agroZoneLabel}).`,
+        ? `${body.trend5y.badge} (${body.trend5y.explanation}) com evaporação Eo=${eo} mm/dia${ndviInfo ? ` · ${ndviInfo}` : ""}.`
+        : `Evaporação Eo=${eo} mm/dia em declive de ~${slope}% (${body.agroZoneLabel})${ndviInfo ? ` · ${ndviInfo}` : ""}.`,
       actionSteps: [
         isPerennial
           ? `Mantenha o pomar permanente e semeie ${best?.name ?? "cobertura viva"} nas entrelinhas.`
@@ -115,7 +120,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     return NextResponse.json(buildDeterministicFallback(body));
   }
@@ -127,11 +132,27 @@ export async function POST(req: NextRequest) {
     pt: "Portuguese",
   };
 
+  const ndviSummary = body.ndvi
+    ? {
+        currentNdvi: body.ndvi.current,
+        deltaPct64d: body.ndvi.deltaPct,
+        vigorCategory:
+          body.ndvi.current < 0.2
+            ? "sparse/stressed or bare soil"
+            : body.ndvi.current < 0.45
+            ? "moderate canopy vigor"
+            : "dense active green canopy",
+      }
+    : null;
+
   const prompt = [
     `You are an agronomic decision-support assistant for farmers.`,
     `Write strictly in ${langNames[body.lang]} using plain, respectful, non-technical language.`,
     `CRITICAL RULE: Use ONLY the exact NASA/DEM/FAO facts in the JSON below. Do NOT invent climate numbers, yields, or chemical dosages. Remind the farmer that local field inspection comes first.`,
     `Note: Eo is Penman (1948) open-surface evaporation (never call it ET0). If currentCropType is "perennial", NEVER advise uprooting the orchard; recommend inter-row living cover instead.`,
+    ndviSummary
+      ? `Satellite NDVI context: Ground diagnosis on satellite vegetation vigor (${ndviSummary.currentNdvi}, ${ndviSummary.vigorCategory}, ${ndviSummary.deltaPct64d}% change over 64d).`
+      : `No NDVI satellite data available for this query.`,
     `Verified field data JSON:`,
     JSON.stringify({
       coords: [body.lat, body.lon],
@@ -140,6 +161,7 @@ export async function POST(req: NextRequest) {
       currentCropType: body.currentCropType,
       climate30d: body.climate,
       trend5y: body.trend5y,
+      satelliteNdvi: ndviSummary,
       topRotations: body.topRotations.slice(0, 3),
     }),
     `Return JSON matching: {"diagnosisSummary": string (1 short sentence), "actionSteps": string[] (exactly 3 short practical steps), "localCheck": string (1 short field-verification tip)}.`,
@@ -153,7 +175,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(8500),
+      signal: AbortSignal.timeout(9500),
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
@@ -165,6 +187,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (!res.ok) {
+      const errDetail = await res.text().catch(() => "");
+      console.warn(
+        `[ai-advisor] Gemini API request failed with status ${res.status}: ${errDetail.slice(0, 160)}`
+      );
       return NextResponse.json(buildDeterministicFallback(body));
     }
 
@@ -192,7 +218,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(buildDeterministicFallback(body));
-  } catch {
+  } catch (err) {
+    console.warn("[ai-advisor] Error calling Gemini 2.5 Flash:", err);
     return NextResponse.json(buildDeterministicFallback(body));
   }
 }
