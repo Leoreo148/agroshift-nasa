@@ -1452,10 +1452,22 @@ export function evaluateCropRotations(
   const regionalPool = CROP_CATALOG.filter((c) => c.suitableZones.includes(zone));
   const pool = regionalPool.length >= 6 ? regionalPool : CROP_CATALOG;
 
-  const targetList =
+  let targetList =
     filterGroup && filterGroup !== "all"
       ? pool.filter((c) => c.botanicalGroup === filterGroup)
       : pool;
+
+  if (currentCropType === "perennial" && (!filterGroup || filterGroup === "all")) {
+    const interRowPool = targetList.filter(
+      (c) => c.botanicalGroup === "cover" || c.botanicalGroup === "legume"
+    );
+    targetList =
+      interRowPool.length >= 2
+        ? interRowPool
+        : CROP_CATALOG.filter(
+            (c) => c.botanicalGroup === "cover" || c.botanicalGroup === "legume"
+          );
+  }
 
   const evaluated = (targetList.length > 0 ? targetList : pool).map((crop) =>
     evaluateSingleCrop(

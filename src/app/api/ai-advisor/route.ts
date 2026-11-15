@@ -33,12 +33,16 @@ export interface AdvisorResponse {
 
 function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
   const best = body.topRotations[0];
+  const clean = (s?: string) => (s ?? "").replace(/\.+$/, "");
   const eo = body.climate.eoMmDay ?? 4.5;
   const slope = body.climate.slopePct ?? 2;
   const isPerennial = body.currentCropType === "perennial";
   const ndviInfo = body.ndvi
     ? `MODIS NDVI: ${body.ndvi.current.toFixed(2)} (${body.ndvi.deltaPct > 0 ? "+" : ""}${body.ndvi.deltaPct}%)`
     : null;
+
+  const benefit = clean(best?.pestBreakBenefit) || "breaks root pest cycles";
+  const trade = clean(best?.tradeOff) || "confirm local moisture and seed availability";
 
   const copy: Record<Lang, Omit<AdvisorResponse, "source">> = {
     en: {
@@ -49,8 +53,8 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
         isPerennial
           ? `Keep your perennial orchard intact and establish ${best?.name ?? "a low cover mix"} between alleys to cut soil evaporation.`
           : `Transition next cycle from your ${body.currentCropType} plot toward ${best?.name ?? "the top legume/cover option"} (${best?.matchScore ?? 85}% fit).`,
-        `Target biological nitrogen and residue protection first: ${best?.pestBreakBenefit ?? "breaks root pest cycles"}.`,
-        `Plan around the main trade-off: ${best?.tradeOff ?? "confirm local moisture and seed availability"}.`,
+        `Target biological nitrogen and residue protection first: ${benefit}.`,
+        `Plan around the main trade-off: ${trade}.`,
       ],
       localCheck:
         "Verify topsoil texture, last 2 seasons' pest history, and actual irrigation/seed access before planting.",
@@ -63,8 +67,8 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
         isPerennial
           ? `Mantén tu cultivo permanente y siembra ${best?.name ?? "cobertura viva"} entre hileras para frenar evaporación y erosión.`
           : `Alterna la próxima campaña hacia ${best?.name ?? "la mejor opción recomendada"} (${best?.matchScore ?? 85}% de ajuste).`,
-        `Aprovecha el beneficio agronómico principal: ${best?.pestBreakBenefit ?? "corta plagas del suelo"}.`,
-        `Prevé la limitación clave: ${best?.tradeOff ?? "valida humedad y semilla local"}.`,
+        `Aprovecha el beneficio agronómico principal: ${benefit}.`,
+        `Prevé la limitación clave: ${trade}.`,
       ],
       localCheck:
         "Confirma en campo la textura del suelo, el historial de plagas de las últimas 2 campañas y disponibilidad real de agua/semilla.",
@@ -77,8 +81,8 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
         isPerennial
           ? `Conservez votre verger et implantez ${best?.name ?? "un couvert végétal"} entre les rangs.`
           : `Orientez la prochaine saison vers ${best?.name ?? "la meilleure rotation"} (score ${best?.matchScore ?? 85}%).`,
-        `Effet sanitaire principal : ${best?.pestBreakBenefit ?? "rupture des cycles parasitaires"}.`,
-        `Anticipez le compromis : ${best?.tradeOff ?? "vérifiez l'humidité et les semences"}.`,
+        `Effet sanitaire principal : ${benefit}.`,
+        `Anticipez le compromis : ${trade}.`,
       ],
       localCheck:
         "Vérifiez sur place la texture du sol, l'historique sanitaire des 2 dernières campagnes et l'accès aux semences.",
@@ -91,8 +95,8 @@ function buildDeterministicFallback(body: AdvisorRequest): AdvisorResponse {
         isPerennial
           ? `Mantenha o pomar permanente e semeie ${best?.name ?? "cobertura viva"} nas entrelinhas.`
           : `Planeje a próxima safra com ${best?.name ?? "a opção mais bem avaliada"} (${best?.matchScore ?? 85}% de ajuste).`,
-        `Ganho sanitário e de solo: ${best?.pestBreakBenefit ?? "quebra ciclos de pragas"}.`,
-        `Atenção ao ponto crítico: ${best?.tradeOff ?? "confira umidade e sementes"}.`,
+        `Ganho sanitário e de solo: ${benefit}.`,
+        `Atenção ao ponto crítico: ${trade}.`,
       ],
       localCheck:
         "Valide no campo a textura do solo, o histórico de pragas das últimas 2 safras e o acesso real à água e sementes.",

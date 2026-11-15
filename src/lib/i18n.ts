@@ -100,6 +100,14 @@ export interface Translations {
   aiCheckLabel: string;
   aiSourceGemini: string;
   aiSourceFallback: string;
+  searchPlacePlaceholder: string;
+  searchPlaceEmpty: string;
+  searchCountryHint: string;
+  geoKinds: {
+    country: string;
+    region: string;
+    place: string;
+  };
   ndviLoadingLabel: string;
   printDossierLabel: string;
   cropCategories: Record<BotanicalGroup | "all", string>;
@@ -267,6 +275,16 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "Verify locally",
     aiSourceGemini: "Gemini 2.5 Flash · Grounded in NASA & FAO data",
     aiSourceFallback: "Deterministic agronomic summary",
+    searchPlacePlaceholder:
+      "Search any country, region, valley or town (e.g. Peru, Kenya, Iowa, Cusco)...",
+    searchPlaceEmpty: "No matching places found.",
+    searchCountryHint:
+      "Country/region centered — click anywhere on the satellite map to pinpoint your exact field.",
+    geoKinds: {
+      country: "Country",
+      region: "Region",
+      place: "Place",
+    },
     ndviLoadingLabel: "Querying 250m 16-day NDVI vegetation vigor from NASA/ORNL DAAC...",
     printDossierLabel: "Print Dossier",
     cropCategories: {
@@ -441,6 +459,16 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "Verificar en campo",
     aiSourceGemini: "Gemini 2.5 Flash · Basado en datos NASA y FAO",
     aiSourceFallback: "Resumen agronómico determinista",
+    searchPlacePlaceholder:
+      "Busca cualquier país, región, valle o ciudad (ej. Perú, Kenia, Iowa, Cusco)...",
+    searchPlaceEmpty: "No se encontraron lugares coincidentes.",
+    searchCountryHint:
+      "Mapa centrado en la zona — haz clic en el mapa satelital para ubicar tu parcela exacta.",
+    geoKinds: {
+      country: "País",
+      region: "Región",
+      place: "Lugar",
+    },
     ndviLoadingLabel: "Consultando vigor vegetal NDVI a 250m (compuesto 16d) en NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
     cropCategories: {
@@ -615,6 +643,16 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "À vérifier sur place",
     aiSourceGemini: "Gemini 2.5 Flash · Basé sur données NASA & FAO",
     aiSourceFallback: "Synthèse agronomique déterministe",
+    searchPlacePlaceholder:
+      "Rechercher un pays, une région ou une ville (ex. Sénégal, Pérou, Iowa)...",
+    searchPlaceEmpty: "Aucun lieu trouvé.",
+    searchCountryHint:
+      "Zone centrée — cliquez sur la carte satellite pour pointer votre parcelle exacte.",
+    geoKinds: {
+      country: "Pays",
+      region: "Région",
+      place: "Lieu",
+    },
     ndviLoadingLabel: "Interrogation de la vigueur végétale NDVI (composite 16j) auprès de NASA/ORNL DAAC...",
     printDossierLabel: "Imprimer le dossier",
     cropCategories: {
@@ -789,6 +827,16 @@ export const T: Record<Lang, Translations> = {
     aiCheckLabel: "Verificar no campo",
     aiSourceGemini: "Gemini 2.5 Flash · Baseado em dados NASA e FAO",
     aiSourceFallback: "Resumo agronômico determinístico",
+    searchPlacePlaceholder:
+      "Busque qualquer país, região, vale ou cidade (ex. Brasil, Peru, Quênia)...",
+    searchPlaceEmpty: "Nenhum local encontrado.",
+    searchCountryHint:
+      "Região centralizada — clique no mapa de satélite para marcar sua área exata.",
+    geoKinds: {
+      country: "País",
+      region: "Região",
+      place: "Local",
+    },
     ndviLoadingLabel: "Consultando vigor de vegetação NDVI (composto 16d) em NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
     cropCategories: {

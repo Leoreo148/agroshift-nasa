@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Sprout,
   MapPin,
@@ -24,9 +24,11 @@ import {
   Printer,
   AlertTriangle,
   Search,
+  X,
 } from "lucide-react";
+import type { GeoResult } from "@/app/api/geocode/route";
 import type { DynamicCropResponse } from "@/app/api/crops/evaluate/route";
-import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
+import { FARM_PRESETS } from "@/data/farms";
 import {
   analyzeTrend5y,
   buildFieldDiagnostics,
@@ -174,13 +176,19 @@ function StepEyebrow({ n, label, title }: { n: string; label: string; title: str
 
 export default function HomePage() {
   const [lang, setLang] = useState<Lang>("en");
-  const [selectedPreset, setSelectedPreset] = useState<FarmPreset | null>(
-    FARM_PRESETS[0]
-  );
   const [lat, setLat] = useState<number>(FARM_PRESETS[0].lat);
   const [lon, setLon] = useState<number>(FARM_PRESETS[0].lon);
   const [latInput, setLatInput] = useState<string>(String(FARM_PRESETS[0].lat));
   const [lonInput, setLonInput] = useState<string>(String(FARM_PRESETS[0].lon));
+  const [targetZoom, setTargetZoom] = useState<number | undefined>(undefined);
+  const [zoomTrigger, setZoomTrigger] = useState<number>(0);
+
+  const [placeQuery, setPlaceQuery] = useState<string>("");
+  const [placeResults, setPlaceResults] = useState<GeoResult[]>([]);
+  const [placeLoading, setPlaceLoading] = useState<boolean>(false);
+  const [placeOpen, setPlaceOpen] = useState<boolean>(false);
+  const [selectedPlace, setSelectedPlace] = useState<GeoResult | null>(null);
+  const placeBoxRef = useRef<HTMLDivElement | null>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [climate, setClimate] = useState<ClimateMetrics | null>(null);
@@ -287,17 +295,78 @@ export default function HomePage() {
     };
   }, [lat, lon]);
 
-  function choosePreset(preset: FarmPreset) {
-    setSelectedPreset(preset);
-    setCurrentCropType(preset.defaultCropType);
-    setLat(preset.lat);
-    setLon(preset.lon);
-    setLatInput(String(preset.lat));
-    setLonInput(String(preset.lon));
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (
+        placeBoxRef.current &&
+        !placeBoxRef.current.contains(e.target as Node)
+      ) {
+        setPlaceOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  useEffect(() => {
+    const q = placeQuery.trim();
+    if (q.length < 2) {
+      setPlaceResults([]);
+      setPlaceLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setPlaceLoading(true);
+      try {
+        const res = await fetch(
+          `/api/geocode?q=${encodeURIComponent(q)}&lang=${lang}`,
+          { signal: controller.signal }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as { results?: GeoResult[] };
+          setPlaceResults(data.results ?? []);
+        } else {
+          setPlaceResults([]);
+        }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setPlaceResults([]);
+        }
+      } finally {
+        setPlaceLoading(false);
+      }
+    }, 280);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [placeQuery, lang]);
+
+  function formatPlaceLabel(place: GeoResult) {
+    return [place.name, place.admin1, place.country]
+      .filter((v): v is string => Boolean(v && v.trim()))
+      .filter((v, idx, arr) => arr.indexOf(v) === idx)
+      .join(", ");
+  }
+
+  function handleSelectGeoResult(result: GeoResult) {
+    setSelectedPlace(result);
+    setPlaceQuery(formatPlaceLabel(result));
+    setPlaceOpen(false);
+    setLat(result.lat);
+    setLon(result.lon);
+    setLatInput(String(result.lat));
+    setLonInput(String(result.lon));
+    setTargetZoom(result.recommendedZoom);
+    setZoomTrigger((n) => n + 1);
   }
 
   function handleMapClick(newLat: number, newLon: number) {
-    setSelectedPreset(null);
+    setSelectedPlace(null);
+    setTargetZoom(undefined);
     setLat(newLat);
     setLon(newLon);
     setLatInput(String(newLat));
@@ -319,9 +388,11 @@ export default function HomePage() {
       setErrorMsg(t.invalidCoords);
       return;
     }
-    setSelectedPreset(null);
+    setSelectedPlace(null);
     setLat(Number(parsedLat.toFixed(4)));
     setLon(Number(parsedLon.toFixed(4)));
+    setTargetZoom(10);
+    setZoomTrigger((n) => n + 1);
   }
 
   function handleUseMyLocation() {
@@ -334,11 +405,13 @@ export default function HomePage() {
       (pos) => {
         const myLat = Number(pos.coords.latitude.toFixed(4));
         const myLon = Number(pos.coords.longitude.toFixed(4));
-        setSelectedPreset(null);
+        setSelectedPlace(null);
         setLat(myLat);
         setLon(myLon);
         setLatInput(String(myLat));
         setLonInput(String(myLon));
+        setTargetZoom(12);
+        setZoomTrigger((n) => n + 1);
         setLocating(false);
       },
       () => {
@@ -349,9 +422,8 @@ export default function HomePage() {
     );
   }
 
-  const presetMeta = selectedPreset ? selectedPreset.labels[lang] : null;
-  const activeLabel = presetMeta
-    ? `${presetMeta.name} (${presetMeta.region})`
+  const activeLabel = selectedPlace
+    ? formatPlaceLabel(selectedPlace)
     : `${t.customParcel} (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
 
   async function handleSearchCropApi(queryToSearch?: string) {
@@ -393,7 +465,7 @@ export default function HomePage() {
   const agroZone = climate ? detectAgroZone(lat, climate) : null;
 
   const diagnostic = climate
-    ? buildFieldDiagnostics(climate, lang, selectedPreset?.slopePct, ndvi)
+    ? buildFieldDiagnostics(climate, lang, undefined, ndvi)
     : null;
 
   const trend5y = analyzeTrend5y(history5y, lang);
@@ -405,7 +477,7 @@ export default function HomePage() {
           agroZone,
           priority,
           lang,
-          selectedPreset?.slopePct,
+          undefined,
           currentCropType,
           selectedCategory
         )
@@ -418,7 +490,7 @@ export default function HomePage() {
           climate,
           priority,
           lang,
-          selectedPreset?.slopePct,
+          undefined,
           currentCropType
         )
       : null;
@@ -516,44 +588,114 @@ export default function HomePage() {
           </button>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {FARM_PRESETS.map((preset) => {
-            const active = selectedPreset?.id === preset.id;
-            const meta = preset.labels[lang];
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => choosePreset(preset)}
-                className={`flex flex-col justify-between rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${
-                  active
-                    ? "border-line-strong bg-panel-raised shadow-[0_0_0_1px_rgba(255,255,255,0.06)]"
-                    : "border-line bg-void/40 hover:border-line-strong"
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] uppercase tracking-wide text-amber">
-                      {meta.region}
-                    </span>
-                    {active && (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-ink" />
-                    )}
-                  </div>
-                  <h3 className="mt-1 text-base font-semibold text-ink">
-                    {meta.name}
-                  </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                    {meta.description}
-                  </p>
+        <div ref={placeBoxRef} className="relative">
+          <div className="relative flex items-center">
+            <Search className="pointer-events-none absolute left-4 h-4 w-4 text-amber" />
+            <input
+              type="text"
+              value={placeQuery}
+              onFocus={() => {
+                if (placeQuery.trim().length >= 2) setPlaceOpen(true);
+              }}
+              onChange={(e) => {
+                const next = e.target.value;
+                setPlaceQuery(next);
+                setPlaceOpen(next.trim().length >= 2);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && placeResults.length > 0) {
+                  e.preventDefault();
+                  handleSelectGeoResult(placeResults[0]);
+                } else if (e.key === "Escape") {
+                  setPlaceOpen(false);
+                }
+              }}
+              placeholder={t.searchPlacePlaceholder}
+              aria-label={t.searchPlacePlaceholder}
+              className="w-full rounded-xl border border-line-strong bg-void/70 py-3 pl-11 pr-20 text-sm text-ink placeholder:text-ink-faint focus:border-amber focus:outline-none"
+            />
+            <div className="absolute right-3 flex items-center gap-1.5">
+              {placeLoading && (
+                <Loader2 className="h-4 w-4 animate-spin text-amber" />
+              )}
+              {placeQuery.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlaceQuery("");
+                    setPlaceResults([]);
+                    setPlaceOpen(false);
+                  }}
+                  className="rounded-lg p-1 text-ink-faint transition hover:bg-panel-raised hover:text-ink"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {placeOpen && placeQuery.trim().length >= 2 && (
+            <div className="absolute left-0 right-0 z-[1000] mt-2 max-h-72 overflow-y-auto rounded-xl border border-line-strong bg-panel shadow-2xl">
+              {placeLoading && placeResults.length === 0 ? (
+                <div className="flex items-center gap-2 px-4 py-3 text-xs text-ink-muted">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-amber" />
+                  <span>
+                    {lang === "es"
+                      ? "Buscando ubicación..."
+                      : lang === "fr"
+                        ? "Recherche en cours..."
+                        : lang === "pt"
+                          ? "Pesquisando local..."
+                          : "Searching location..."}
+                  </span>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-2.5 text-[11px] text-ink-faint">
-                  <span>{meta.climateTag}</span>
-                  <span className="text-ink-muted">{meta.currentCrop}</span>
+              ) : placeResults.length === 0 ? (
+                <div className="px-4 py-3 text-xs text-ink-muted">
+                  {t.searchPlaceEmpty}
                 </div>
-              </button>
-            );
-          })}
+              ) : (
+                <ul className="divide-y divide-line">
+                  {placeResults.map((result) => {
+                    const subtext = [result.admin1, result.country]
+                      .filter((v): v is string => Boolean(v && v !== result.name))
+                      .join(" · ");
+                    return (
+                      <li key={result.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectGeoResult(result)}
+                          className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition hover:bg-panel-raised"
+                        >
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <MapPin className="h-4 w-4 shrink-0 text-amber" />
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium text-ink">
+                                {result.name}
+                              </div>
+                              {subtext && (
+                                <div className="truncate text-xs text-ink-muted">
+                                  {subtext}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="hidden font-mono text-[11px] text-ink-faint sm:inline">
+                              {result.lat.toFixed(2)}, {result.lon.toFixed(2)}
+                            </span>
+                            <span className="rounded-full border border-line bg-void/60 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-amber">
+                              {t.geoKinds[result.kind]}
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-12">
@@ -566,6 +708,8 @@ export default function HomePage() {
               satelliteLabel={t.satellite}
               mapLabel={t.mapView}
               hintText={t.mapHint}
+              targetZoom={targetZoom}
+              zoomTrigger={zoomTrigger}
             />
           </div>
 
@@ -586,8 +730,8 @@ export default function HomePage() {
                 {activeLabel}
               </h3>
               <p className="mt-1 text-xs text-ink-faint">
-                {presetMeta
-                  ? `${t.currentCropLabel}: ${presetMeta.currentCrop}`
+                {selectedPlace && selectedPlace.kind !== "place"
+                  ? t.searchCountryHint
                   : t.freeLocationNote}
               </p>
 
@@ -943,7 +1087,7 @@ export default function HomePage() {
                   <span className="font-mono font-semibold text-ink">
                     {climate?.slopePct !== null
                       ? `${climate?.slopePct}%`
-                      : `${selectedPreset?.slopePct ?? "—"}%`}
+                      : "—"}
                   </span>
                 </div>
                 <div>

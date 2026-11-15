@@ -9,6 +9,8 @@ interface FarmMapProps {
   lon: number;
   label: string;
   onSelectCoords: (lat: number, lon: number) => void;
+  targetZoom?: number;
+  zoomTrigger?: number;
   satelliteLabel?: string;
   mapLabel?: string;
   hintText?: string;
@@ -19,6 +21,8 @@ export default function FarmMap({
   lon,
   label,
   onSelectCoords,
+  targetZoom,
+  zoomTrigger = 0,
   satelliteLabel = "Satellite",
   mapLabel = "Map",
   hintText = "Click anywhere on the map to move your field",
@@ -90,10 +94,14 @@ export default function FarmMap({
 
     marker.setLatLng([lat, lon]);
     marker.setTooltipContent(label);
-    map.flyTo([lat, lon], Math.max(map.getZoom(), 11), {
+    const nextZoom =
+      zoomTrigger > 0 && targetZoom !== undefined
+        ? targetZoom
+        : Math.max(map.getZoom(), 9);
+    map.flyTo([lat, lon], nextZoom, {
       duration: 0.9,
     });
-  }, [lat, lon, label]);
+  }, [lat, lon, label, targetZoom, zoomTrigger]);
 
   useEffect(() => {
     const map = mapRef.current;
