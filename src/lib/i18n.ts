@@ -1,4 +1,4 @@
-import type { CurrentCropType } from "@/lib/rotations";
+import type { CurrentCropType, BotanicalGroup } from "@/lib/rotations";
 
 export type Lang = "en" | "es" | "fr" | "pt";
 
@@ -102,6 +102,16 @@ export interface Translations {
   aiSourceFallback: string;
   ndviLoadingLabel: string;
   printDossierLabel: string;
+  cropCategories: Record<BotanicalGroup | "all", string>;
+  plantCheckerTitle: string;
+  plantCheckerPrompt: string;
+  plantCheckerSelect: string;
+  techDetailsToggleShow: string;
+  techDetailsToggleHide: string;
+  citationsToggleShow: string;
+  citationsToggleHide: string;
+  historyToggleShow: string;
+  historyToggleHide: string;
 }
 
 export const T: Record<Lang, Translations> = {
@@ -254,6 +264,25 @@ export const T: Record<Lang, Translations> = {
     aiSourceFallback: "Deterministic agronomic summary",
     ndviLoadingLabel: "Querying 250m 16-day NDVI vegetation vigor from NASA/ORNL DAAC...",
     printDossierLabel: "Print Dossier",
+    cropCategories: {
+      all: "All Crops (26)",
+      horticulture: "🥬 Vegetables",
+      tuber: "🥔 Roots & Tubers",
+      legume: "🫘 Legumes (N-Fixers)",
+      cereal: "🌽 Grains & Cereals",
+      oilseed: "🌻 Oilseeds & Cash",
+      cover: "🌿 Cover & Forage",
+      pseudocereal: "🌾 Ancient Superfoods",
+    },
+    plantCheckerTitle: "Individual Plant Feasibility Check",
+    plantCheckerPrompt: "Wondering if a specific plant will succeed in this exact field?",
+    plantCheckerSelect: "Select any crop from the catalog to evaluate...",
+    techDetailsToggleShow: "Show technical climate telemetry (NASA / DEM)",
+    techDetailsToggleHide: "Hide technical climate telemetry",
+    citationsToggleShow: "Show agronomic citations & thresholds",
+    citationsToggleHide: "Hide agronomic citations",
+    historyToggleShow: "View 5-Year Climate History (NASA POWER)",
+    historyToggleHide: "Hide 5-Year Climate History",
   },
   es: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -404,6 +433,25 @@ export const T: Record<Lang, Translations> = {
     aiSourceFallback: "Resumen agronómico determinista",
     ndviLoadingLabel: "Consultando vigor vegetal NDVI a 250m (compuesto 16d) en NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
+    cropCategories: {
+      all: "Todos los cultivos (26)",
+      horticulture: "🥬 Hortalizas",
+      tuber: "🥔 Tubérculos y Raíces",
+      legume: "🫘 Leguminosas (Nitrógeno)",
+      cereal: "🌽 Granos y Cereales",
+      oilseed: "🌻 Oleaginosas y Renta",
+      cover: "🌿 Abonos Verdes / Coberturas",
+      pseudocereal: "🌾 Superalimentos Andinos",
+    },
+    plantCheckerTitle: "Verificador de Viabilidad de Planta Específica",
+    plantCheckerPrompt: "¿Quieres saber si una planta específica es apta para sembrarse aquí?",
+    plantCheckerSelect: "Selecciona cualquier cultivo del catálogo para comprobar...",
+    techDetailsToggleShow: "Ver telemetría técnica detallada (NASA / DEM)",
+    techDetailsToggleHide: "Ocultar telemetría técnica",
+    citationsToggleShow: "Ver sustento científico y umbrales",
+    citationsToggleHide: "Ocultar sustento científico",
+    historyToggleShow: "Ver Historial Climático de 5 Años (NASA POWER)",
+    historyToggleHide: "Ocultar Historial Climático",
   },
   fr: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -554,6 +602,25 @@ export const T: Record<Lang, Translations> = {
     aiSourceFallback: "Synthèse agronomique déterministe",
     ndviLoadingLabel: "Interrogation de la vigueur végétale NDVI (composite 16j) auprès de NASA/ORNL DAAC...",
     printDossierLabel: "Imprimer le dossier",
+    cropCategories: {
+      all: "Toutes les cultures (26)",
+      horticulture: "🥬 Légumes maraîchers",
+      tuber: "🥔 Tubercules & Racines",
+      legume: "🫘 Légumineuses (Azote)",
+      cereal: "🌽 Grains & Céréales",
+      oilseed: "🌻 Oléagineux & Rente",
+      cover: "🌿 Engrais verts & Couverts",
+      pseudocereal: "🌾 Super-aliments",
+    },
+    plantCheckerTitle: "Vérificateur de Faisabilité pour Plante Spécifique",
+    plantCheckerPrompt: "Voulez-vous vérifier si une plante précise réussira sur cette parcelle ?",
+    plantCheckerSelect: "Sélectionnez une culture pour évaluer sa viabilité...",
+    techDetailsToggleShow: "Afficher la télémétrie technique (NASA / DEM)",
+    techDetailsToggleHide: "Masquer la télémétrie technique",
+    citationsToggleShow: "Afficher les références agronomiques",
+    citationsToggleHide: "Masquer les références agronomiques",
+    historyToggleShow: "Voir l'Historique Climatique sur 5 Ans (NASA POWER)",
+    historyToggleHide: "Masquer l'Historique Climatique",
   },
   pt: {
     badge: "NASA Space Apps 2026 · Field Shift",
@@ -704,5 +771,24 @@ export const T: Record<Lang, Translations> = {
     aiSourceFallback: "Resumo agronômico determinístico",
     ndviLoadingLabel: "Consultando vigor de vegetação NDVI (composto 16d) em NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
+    cropCategories: {
+      all: "Todos os cultivos (26)",
+      horticulture: "🥬 Hortaliças",
+      tuber: "🥔 Tubérculos e Raízes",
+      legume: "🫘 Leguminosas (Nitrogênio)",
+      cereal: "🌽 Grãos e Cereais",
+      oilseed: "🌻 Oleaginosas e Renda",
+      cover: "🌿 Adubação Verde / Cobertura",
+      pseudocereal: "🌾 Superalimentos",
+    },
+    plantCheckerTitle: "Verificador de Viabilidade de Planta Específica",
+    plantCheckerPrompt: "Deseja verificar se uma planta específica terá sucesso nesta área?",
+    plantCheckerSelect: "Selecione qualquer cultura do catálogo para avaliar...",
+    techDetailsToggleShow: "Exibir telemetria técnica detalhada (NASA / DEM)",
+    techDetailsToggleHide: "Ocultar telemetria técnica",
+    citationsToggleShow: "Exibir referências agronômicas",
+    citationsToggleHide: "Ocultar referências agronômicas",
+    historyToggleShow: "Ver Histórico Climático de 5 Anos (NASA POWER)",
+    historyToggleHide: "Ocultar Histórico Climático",
   },
 };

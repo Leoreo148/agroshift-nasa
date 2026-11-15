@@ -26,6 +26,7 @@ export interface HistoryYear {
   tempAvgC: number;
   rainMmYear: number;
   soilWetness: number;
+  rootWetness?: number | null;
 }
 
 export interface Forecast7d {
@@ -167,7 +168,7 @@ export async function GET(req: NextRequest) {
 
   const historyUrl =
     `https://power.larc.nasa.gov/api/temporal/monthly/point` +
-    `?parameters=T2M,PRECTOTCORR,GWETTOP` +
+    `?parameters=T2M,PRECTOTCORR,GWETTOP,GWETROOT` +
     `&community=AG&longitude=${lon.toFixed(4)}&latitude=${lat.toFixed(4)}` +
     `&start=${startYear}&end=${endYear}&format=JSON`;
 
@@ -282,12 +283,14 @@ export async function GET(req: NextRequest) {
         const t = readYearVal(hp.T2M, yr);
         const p = readYearVal(hp.PRECTOTCORR, yr);
         const w = readYearVal(hp.GWETTOP, yr);
+        const rw = readYearVal(hp.GWETROOT, yr);
         if (t !== null && p !== null && w !== null) {
           history5y.push({
             year: yr,
             tempAvgC: Number(t.toFixed(1)),
             rainMmYear: Math.round(p * 365),
             soilWetness: Number(w.toFixed(2)),
+            rootWetness: rw !== null ? Number(rw.toFixed(2)) : null,
           });
         }
       }

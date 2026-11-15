@@ -22,6 +22,7 @@ import {
   Sparkles,
   Satellite,
   Printer,
+  AlertTriangle,
 } from "lucide-react";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 import {
@@ -33,6 +34,9 @@ import {
 } from "@/lib/diagnostics";
 import {
   evaluateCropRotations,
+  evaluateSingleCrop,
+  CROP_CATALOG,
+  type BotanicalGroup,
   type CurrentCropType,
   type FarmerPriority,
 } from "@/lib/rotations";
@@ -68,6 +72,21 @@ const LEVEL_STYLES: Record<
   alert: {
     border: "border-rose/35 bg-rose/5",
     text: "text-rose",
+    dot: "bg-rose",
+  },
+};
+
+const FEASIBILITY_STYLES = {
+  optimal: {
+    badge: "border-green/40 bg-green/10 text-green",
+    dot: "bg-green",
+  },
+  manageable: {
+    badge: "border-amber/40 bg-amber/10 text-amber",
+    dot: "bg-amber",
+  },
+  critical: {
+    badge: "border-rose/40 bg-rose/10 text-rose",
     dot: "bg-rose",
   },
 };
@@ -156,6 +175,10 @@ export default function HomePage() {
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
   const [showCropScience, setShowCropScience] = useState<boolean>(false);
   const [priority, setPriority] = useState<FarmerPriority>("water");
+  const [selectedCategory, setSelectedCategory] = useState<BotanicalGroup | "all">("all");
+  const [checkedCropId, setCheckedCropId] = useState<string>("tomato");
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [expandedCropCitations, setExpandedCropCitations] = useState<Record<string, boolean>>({});
   const [currentCropType, setCurrentCropType] = useState<CurrentCropType>(
     FARM_PRESETS[0].defaultCropType
   );
@@ -324,9 +347,22 @@ export default function HomePage() {
           priority,
           lang,
           selectedPreset?.slopePct,
-          currentCropType
+          currentCropType,
+          selectedCategory
         )
       : [];
+
+  const checkedCrop =
+    climate && agroZone
+      ? evaluateSingleCrop(
+          CROP_CATALOG.find((c) => c.id === checkedCropId) ?? CROP_CATALOG[0],
+          climate,
+          priority,
+          lang,
+          selectedPreset?.slopePct,
+          currentCropType
+        )
+      : null;
 
   const activeProblem = t.problemByCrop[currentCropType];
 
@@ -739,8 +775,38 @@ export default function HomePage() {
               );
             })()}
 
-            {history5y.length > 0 && (
-              <div className="mt-5 rounded-2xl border border-line bg-void/60 p-4">
+            <div className="mt-4 flex flex-wrap gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowTechDetails((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-void/60 px-3 py-1.5 font-mono text-xs text-ink-muted transition hover:border-cyan/50 hover:text-cyan"
+              >
+                {showTechDetails ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-cyan" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-cyan" />
+                )}
+                {showTechDetails ? t.techDetailsToggleHide : t.techDetailsToggleShow}
+              </button>
+
+              {history5y.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowHistory((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-void/60 px-3 py-1.5 font-mono text-xs text-ink-muted transition hover:border-cyan/50 hover:text-cyan"
+                >
+                  {showHistory ? (
+                    <ChevronUp className="h-3.5 w-3.5 text-cyan" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5 text-cyan" />
+                  )}
+                  {showHistory ? t.historyToggleHide : t.historyToggleShow}
+                </button>
+              )}
+            </div>
+
+            {showHistory && history5y.length > 0 && (
+              <div className="mt-4 rounded-2xl border border-line bg-void/60 p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-cyan">
                     {t.historyTitle}
@@ -792,7 +858,7 @@ export default function HomePage() {
             )}
 
             {showTechDetails && (
-              <div className="mt-5 grid gap-3 rounded-2xl border border-line bg-void/80 p-4 text-xs text-ink-muted sm:grid-cols-5">
+              <div className="mt-4 grid gap-3 rounded-2xl border border-line bg-void/80 p-4 text-xs text-ink-muted sm:grid-cols-5">
                 <div>
                   <span className="block text-[11px] text-ink-faint">
                     {t.zoneLabel}
@@ -945,72 +1011,215 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* CATEGORY FILTER TABS */}
+        <div className="mb-5 flex flex-wrap gap-1.5 border-b border-line pb-3">
+          {(
+            [
+              "all",
+              "horticulture",
+              "tuber",
+              "legume",
+              "cereal",
+              "oilseed",
+              "cover",
+              "pseudocereal",
+            ] as const
+          ).map((cat) => {
+            const active = selectedCategory === cat;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCategory(cat)}
+                className={`rounded-xl px-3 py-1.5 font-mono text-xs font-medium transition ${
+                  active
+                    ? "border border-cyan/50 bg-cyan/15 text-cyan shadow-sm"
+                    : "border border-transparent bg-void/50 text-ink-muted hover:border-line hover:text-ink"
+                }`}
+              >
+                {t.cropCategories[cat]}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* PLANT CHECKER TOOL */}
+        <div className="mb-6 rounded-2xl border border-cyan/40 bg-void/80 p-4 sm:p-5 shadow-lg">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wider text-cyan">
+                <Sparkles className="h-4 w-4 text-cyan" />
+                {t.plantCheckerTitle}
+              </h3>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                {t.plantCheckerPrompt}
+              </p>
+            </div>
+            <div className="w-full sm:w-80">
+              <select
+                value={checkedCropId}
+                onChange={(e) => setCheckedCropId(e.target.value)}
+                className="w-full rounded-xl border border-line-strong bg-panel-raised px-3 py-2 font-mono text-xs text-ink focus:border-cyan focus:outline-none"
+              >
+                {CROP_CATALOG.map((crop) => {
+                  const txt = crop.i18n[lang] ?? crop.i18n.es;
+                  return (
+                    <option key={crop.id} value={crop.id}>
+                      {txt.name} ({crop.scientificName})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+
+          {checkedCrop && (
+            <div className="mt-4 rounded-xl border border-line bg-panel p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-lg font-bold text-ink">{checkedCrop.name}</h4>
+                    <span className="font-mono text-xs italic text-ink-faint">
+                      ({checkedCrop.scientificName})
+                    </span>
+                  </div>
+                  <span className="text-xs text-ink-muted">{checkedCrop.category}</span>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-xs font-semibold ${
+                    FEASIBILITY_STYLES[checkedCrop.feasibility].badge
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      FEASIBILITY_STYLES[checkedCrop.feasibility].dot
+                    }`}
+                  />
+                  {checkedCrop.feasibilityLabel} ({checkedCrop.matchScore}%)
+                </span>
+              </div>
+
+              {checkedCrop.limitingFactor && (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber" />
+                  <span>{checkedCrop.limitingFactor}</span>
+                </div>
+              )}
+
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 font-mono text-xs">
+                <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                  <span className="block text-[10px] text-ink-faint">
+                    Demanda Hídrica (FAO-56)
+                  </span>
+                  <span className="font-semibold text-cyan">
+                    {checkedCrop.waterRangeMm[0]}–{checkedCrop.waterRangeMm[1]} mm
+                  </span>
+                </div>
+                <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                  <span className="block text-[10px] text-ink-faint">
+                    Temperatura Óptima
+                  </span>
+                  <span className="font-semibold text-amber">
+                    {checkedCrop.ecoCropTempC[1]}–{checkedCrop.ecoCropTempC[2]} °C
+                  </span>
+                </div>
+                <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                  <span className="block text-[10px] text-ink-faint">
+                    Fijación de Nitrógeno
+                  </span>
+                  <span className="font-semibold text-green">
+                    {checkedCrop.bnfKgNHa[1] > 0
+                      ? `${checkedCrop.bnfKgNHa[0]}–${checkedCrop.bnfKgNHa[1]} kg N/ha`
+                      : "0 kg N"}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-line bg-void/60 p-2.5">
+                  <span className="block text-[10px] text-ink-faint">
+                    Ciclo a Cosecha
+                  </span>
+                  <span className="font-semibold text-ink">
+                    {checkedCrop.cycleDays[0]}–{checkedCrop.cycleDays[1]} días
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {loading || rotations.length === 0 ? (
           <div className="flex items-center gap-2 rounded-2xl border border-line bg-void/50 p-5 text-sm text-ink-muted">
             <Loader2 className="h-4 w-4 animate-spin text-amber" />
             {t.calculatingRot}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-3">
-            {rotations.slice(0, 3).map((crop, idx) => {
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {rotations.slice(0, 6).map((crop, idx) => {
               const isBest = idx === 0;
+              const isExpanded = !!expandedCropCitations[crop.id];
               return (
                 <div
                   key={crop.id}
-                  className={`flex flex-col justify-between rounded-2xl border p-5 ${
+                  className={`flex flex-col justify-between rounded-2xl border p-5 transition ${
                     isBest
-                      ? "border-amber/60 bg-amber/10"
-                      : "border-line bg-void/60"
+                      ? "border-cyan/50 bg-cyan/5 shadow-md"
+                      : "border-line bg-panel hover:border-line-strong"
                   }`}
                 >
                   <div>
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-ink-faint">
-                        {crop.category}
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
+                          FEASIBILITY_STYLES[crop.feasibility].badge
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            FEASIBILITY_STYLES[crop.feasibility].dot
+                          }`}
+                        />
+                        {crop.feasibilityLabel}
                       </span>
-                      {isBest ? (
-                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-amber/20 px-2.5 py-0.5 text-xs font-semibold text-amber">
-                          <Award className="h-3.5 w-3.5" />
-                          {t.bestChoice}
-                        </span>
-                      ) : (
-                        <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-panel-raised px-2.5 py-0.5 text-xs text-ink-muted">
-                          <Repeat className="h-3 w-3" />
-                          {t.optionN(idx + 1)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-baseline justify-between gap-2">
-                      <div>
-                        <h3 className="font-display text-lg font-bold text-ink">
-                          {crop.name}
-                        </h3>
-                        <span className="text-[11px] italic text-ink-faint">
-                          {crop.scientificName}
-                        </span>
-                      </div>
-                      <span className="font-mono text-lg font-bold text-amber">
+                      <span className="font-mono text-sm font-bold text-cyan">
                         {crop.matchScore}%
                       </span>
                     </div>
 
-                    <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                      {crop.reason}
-                    </p>
+                    <div>
+                      <h3 className="font-display text-lg font-bold text-ink">
+                        {crop.name}
+                      </h3>
+                      <span className="font-mono text-xs italic text-ink-faint">
+                        {crop.scientificName}
+                      </span>
+                      <p className="mt-0.5 text-xs text-ink-muted line-clamp-1">
+                        {crop.category}
+                      </p>
+                    </div>
 
-                    <div className="mt-4 space-y-2.5">
-                      <div>
-                        <div className="mb-1 flex justify-between text-[11px] text-ink-faint">
-                          <span className="inline-flex items-center gap-1">
-                            <Droplets className="h-3 w-3 text-cyan" />
-                            {t.waterSaving}
-                          </span>
-                          <span className="font-mono text-ink-muted">
-                            {crop.waterSavingScore}%
+                    <div className="mt-3 space-y-1.5 text-xs text-ink-muted">
+                      <div className="flex items-start gap-1.5">
+                        <Sprout className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />
+                        <span className="text-[11px] leading-snug">
+                          {crop.pestBreakBenefit}
+                        </span>
+                      </div>
+                      {crop.limitingFactor && (
+                        <div className="flex items-start gap-1.5 text-amber">
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber" />
+                          <span className="text-[11px] leading-snug">
+                            {crop.limitingFactor}
                           </span>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
+                      )}
+                    </div>
+
+                    <div className="mt-3.5 space-y-2 border-t border-line/50 pt-2.5">
+                      <div>
+                        <div className="mb-1 flex justify-between text-[10px] text-ink-faint font-mono">
+                          <span>{t.waterSaving}</span>
+                          <span>{crop.waterSavingScore}%</span>
+                        </div>
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-line">
                           <div
                             className="h-full rounded-full bg-cyan"
                             style={{ width: `${crop.waterSavingScore}%` }}
@@ -1019,16 +1228,11 @@ export default function HomePage() {
                       </div>
 
                       <div>
-                        <div className="mb-1 flex justify-between text-[11px] text-ink-faint">
-                          <span className="inline-flex items-center gap-1">
-                            <Sprout className="h-3 w-3 text-green" />
-                            {t.soilCare}
-                          </span>
-                          <span className="font-mono text-ink-muted">
-                            {crop.soilScore}%
-                          </span>
+                        <div className="mb-1 flex justify-between text-[10px] text-ink-faint font-mono">
+                          <span>{t.soilCare}</span>
+                          <span>{crop.soilScore}%</span>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-line">
                           <div
                             className="h-full rounded-full bg-green"
                             style={{ width: `${crop.soilScore}%` }}
@@ -1037,16 +1241,11 @@ export default function HomePage() {
                       </div>
 
                       <div>
-                        <div className="mb-1 flex justify-between text-[11px] text-ink-faint">
-                          <span className="inline-flex items-center gap-1">
-                            <Thermometer className="h-3 w-3 text-amber" />
-                            {t.climateFit}
-                          </span>
-                          <span className="font-mono text-ink-muted">
-                            {crop.climateFitScore}%
-                          </span>
+                        <div className="mb-1 flex justify-between text-[10px] text-ink-faint font-mono">
+                          <span>{t.climateFit}</span>
+                          <span>{crop.climateFitScore}%</span>
                         </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-line">
                           <div
                             className="h-full rounded-full bg-amber"
                             style={{ width: `${crop.climateFitScore}%` }}
@@ -1056,29 +1255,47 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-1.5 border-t border-line pt-3 text-[11px]">
-                    <p className="text-ink-muted">
-                      <span className="font-semibold text-green">
-                        {t.sanidadLabel}:
-                      </span>{" "}
-                      {crop.pestBreakBenefit}
-                    </p>
-                    <p className="text-ink-faint">
-                      <span className="font-semibold text-amber">
-                        {t.tradeOffLabel}:
-                      </span>{" "}
-                      {crop.tradeOff}
-                    </p>
-                    {showCropScience && (
-                      <div className="pt-1.5 text-[10px] leading-relaxed text-ink-faint">
-                        <span className="font-semibold text-ink-muted">
-                          {t.sciBaseLabel}:
-                        </span>
-                        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-ink-faint">
-                          {crop.citations.map((cite, cIdx) => (
-                            <li key={cIdx}>{cite}</li>
-                          ))}
-                        </ul>
+                  <div className="mt-4 border-t border-line/60 pt-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedCropCitations((prev) => ({
+                          ...prev,
+                          [crop.id]: !prev[crop.id],
+                        }))
+                      }
+                      className="flex w-full items-center justify-between text-[11px] font-mono text-ink-faint transition hover:text-cyan"
+                    >
+                      <span>
+                        {isExpanded
+                          ? t.citationsToggleHide
+                          : t.citationsToggleShow}
+                      </span>
+                      {isExpanded ? (
+                        <ChevronUp className="h-3 w-3 text-cyan" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3 text-cyan" />
+                      )}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="mt-2 space-y-1.5 border-t border-line/40 pt-2 text-[10px] font-mono leading-relaxed text-ink-faint">
+                        <p>
+                          <span className="text-ink-muted">Agua FAO-56:</span>{" "}
+                          {crop.waterRangeMm[0]}–{crop.waterRangeMm[1]} mm (Kc:{" "}
+                          {crop.kcMid})
+                        </p>
+                        <p>
+                          <span className="text-ink-muted">Temp. Óptima:</span>{" "}
+                          {crop.ecoCropTempC[1]}–{crop.ecoCropTempC[2]} °C
+                        </p>
+                        <p>
+                          <span className="text-ink-muted">Ciclo:</span>{" "}
+                          {crop.cycleDays[0]}–{crop.cycleDays[1]} días
+                        </p>
+                        <p className="pt-0.5 text-[9.5px] text-ink-faint/80 line-clamp-2">
+                          {crop.reference}
+                        </p>
                       </div>
                     )}
                   </div>
