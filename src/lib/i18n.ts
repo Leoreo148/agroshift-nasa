@@ -116,6 +116,14 @@ export interface Translations {
   perimeterLengthLabel: string;
   delimitedParcel: string;
   verticesCount: (n: number) => string;
+  dossierTitle: string;
+  dossierSubtitle: string;
+  dossierGenerateBtn: string;
+  dossierDownloadPdf: string;
+  dossierPrintBtn: string;
+  dossierWaterStatus: string;
+  dossierRecommendations: string;
+
   ndviLoadingLabel: string;
   printDossierLabel: string;
   cropCategories: Record<BotanicalGroup | "all", string>;
@@ -302,6 +310,14 @@ export const T: Record<Lang, Translations> = {
     perimeterLengthLabel: "Perimeter",
     delimitedParcel: "Delimited parcel",
     verticesCount: (n: number) => `${n} pts`,
+    dossierTitle: "Parcel & Soil Technical Dossier",
+    dossierSubtitle: "Executive field report synthesizing NASA POWER climate, soil moisture & FAO-56 requirements",
+    dossierGenerateBtn: "Generate Technical Dossier (PDF)",
+    dossierDownloadPdf: "Download PDF Dossier",
+    dossierPrintBtn: "Print Dossier",
+    dossierWaterStatus: "Soil Water Balance & Evaporation (Penman Eo)",
+    dossierRecommendations: "Recommended Soil Management Steps",
+
     ndviLoadingLabel: "Querying 250m 16-day NDVI vegetation vigor from NASA/ORNL DAAC...",
     printDossierLabel: "Print Dossier",
     cropCategories: {
@@ -495,6 +511,14 @@ export const T: Record<Lang, Translations> = {
     perimeterLengthLabel: "Perímetro",
     delimitedParcel: "Parcela delimitada",
     verticesCount: (n: number) => `${n} pts`,
+    dossierTitle: "Ficha Técnica y Diagnóstico de Suelo de la Parcela",
+    dossierSubtitle: "Informe ejecutivo sintetizado con telemetría NASA POWER, Copernicus DEM y estándares FAO",
+    dossierGenerateBtn: "Generar Ficha Técnica (PDF Oficial)",
+    dossierDownloadPdf: "Descargar Ficha en PDF",
+    dossierPrintBtn: "Imprimir Ficha",
+    dossierWaterStatus: "Balance Hídrico del Suelo y Evaporación (Penman Eo)",
+    dossierRecommendations: "Recomendaciones de Manejo para este Suelo",
+
     ndviLoadingLabel: "Consultando vigor vegetal NDVI a 250m (compuesto 16d) en NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
     cropCategories: {
@@ -688,6 +712,14 @@ export const T: Record<Lang, Translations> = {
     perimeterLengthLabel: "Périmètre",
     delimitedParcel: "Parcelle délimitée",
     verticesCount: (n: number) => `${n} pts`,
+    dossierTitle: "Dossier Technique & Diagnostic du Sol de la Parcelle",
+    dossierSubtitle: "Rapport exécutif synthétisé avec télémétrie NASA POWER, Copernicus DEM et normes FAO",
+    dossierGenerateBtn: "Générer le Dossier Technique (PDF)",
+    dossierDownloadPdf: "Télécharger le Dossier PDF",
+    dossierPrintBtn: "Imprimer le Dossier",
+    dossierWaterStatus: "Bilan Hydrique du Sol et Évaporation (Penman Eo)",
+    dossierRecommendations: "Recommandations de Gestion pour ce Sol",
+
     ndviLoadingLabel: "Interrogation de la vigueur végétale NDVI (composite 16j) auprès de NASA/ORNL DAAC...",
     printDossierLabel: "Imprimer le dossier",
     cropCategories: {
@@ -881,6 +913,14 @@ export const T: Record<Lang, Translations> = {
     perimeterLengthLabel: "Perímetro",
     delimitedParcel: "Talhão delimitado",
     verticesCount: (n: number) => `${n} pts`,
+    dossierTitle: "Ficha Técnica e Diagnóstico do Solo da Área",
+    dossierSubtitle: "Relatório executivo sintetizado com telemetria NASA POWER, DEM Copernicus e normas FAO",
+    dossierGenerateBtn: "Gerar Ficha Técnica (PDF Oficial)",
+    dossierDownloadPdf: "Baixar Ficha em PDF",
+    dossierPrintBtn: "Imprimir Ficha",
+    dossierWaterStatus: "Balanço Hídrico do Solo e Evaporação (Penman Eo)",
+    dossierRecommendations: "Recomendações de Manejo para este Solo",
+
     ndviLoadingLabel: "Consultando vigor de vegetação NDVI (composto 16d) em NASA/ORNL DAAC...",
     printDossierLabel: "Imprimir Ficha",
     cropCategories: {

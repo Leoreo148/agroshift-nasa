@@ -24,10 +24,17 @@ import {
   AlertTriangle,
   Search,
   X,
+  FileText,
+  Download,
+  CheckCheck,
+
 } from "lucide-react";
 import type { GeoResult } from "@/app/api/geocode/route";
 import type { DynamicCropResponse } from "@/app/api/crops/evaluate/route";
 import { FARM_PRESETS } from "@/data/farms";
+import { generateParcelPdf, type DossierData } from "@/lib/pdfGenerator";
+import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
+
 import {
   analyzeTrend5y,
   buildFieldDiagnostics,
@@ -219,6 +226,8 @@ export default function HomePage() {
   );
   const [aiPlan, setAiPlan] = useState<AdvisorResponse | null>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState<boolean>(false);
+  const [dossierDownloaded, setDossierDownloaded] = useState<boolean>(false);
   const [clock, setClock] = useState<string | null>(null);
 
   useEffect(() => {
@@ -545,6 +554,48 @@ export default function HomePage() {
       : null;
 
   const activeProblem = t.problemByCrop[currentCropType];
+
+  function handleDownloadPdf() {
+    if (!climate || !agroZone) return;
+    setIsGeneratingPdf(true);
+
+    try {
+      const dossierData: DossierData = {
+        parcelName: activeLabel,
+        lat,
+        lon,
+        agroZoneLabel: t.zones[agroZone],
+        elevationM: climate.elevationM ?? 200,
+        slopePct: climate.slopePct ?? (selectedPreset?.slopePct ?? 2),
+        currentCropType,
+        currentCropLabel: t.currentCropTypes[currentCropType],
+        climate,
+        trend5y,
+        ndvi,
+        priority,
+        topRotations: rotations.slice(0, 3).map((r) => ({
+          name: r.name,
+          scientificName: r.scientificName,
+          category: r.category,
+          matchScore: r.matchScore,
+          waterDemand: `${r.waterRangeMm[0]}–${r.waterRangeMm[1]} mm`,
+          nitrogenFixation:
+            r.bnfKgNHa[1] > 0 ? `+${r.bnfKgNHa[0]}–${r.bnfKgNHa[1]} kg N/ha` : "0 kg N",
+        })),
+        lang,
+      };
+
+      const doc = generateParcelPdf(dossierData);
+      const cleanName = activeLabel.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 24);
+      doc.save(`AgroShift_Ficha_Parcela_${cleanName}.pdf`);
+      setDossierDownloaded(true);
+      setTimeout(() => setDossierDownloaded(false), 4000);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-[1440px] space-y-8 px-5 py-8 sm:space-y-10 sm:px-8 sm:py-10">
@@ -1603,111 +1654,159 @@ export default function HomePage() {
         </div>
 
         {!loading && climate && agroZone && rotations.length > 0 && (
-          <div className="relative mt-5 overflow-hidden rounded-2xl border border-cyan/30 bg-panel-raised/60 p-4 sm:p-5">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan/40 to-transparent" />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-cyan/40 bg-cyan/10 text-cyan">
-                  <Sparkles className="h-3.5 w-3.5" />
+          <div className="relative mt-6 overflow-hidden rounded-2xl border border-cyan/40 bg-void/80 p-5 sm:p-6 shadow-xl">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan to-transparent" />
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-line/60 pb-4">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan/40 bg-cyan/15 text-cyan shrink-0">
+                  <FileText className="h-5 w-5" />
                 </span>
                 <div>
-                  <h4 className="font-mono text-xs font-semibold uppercase tracking-wider text-cyan">
-                    {t.aiTitle}
-                  </h4>
-                  <p className="text-[11px] text-ink-faint">
-                    Gemini 2.5 Flash · NASA POWER + MODIS NDVI + FAO-56
+                  <h3 className="font-display text-lg font-semibold tracking-tight text-ink">
+                    {t.dossierTitle}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    {t.dossierSubtitle}
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                disabled={aiLoading}
-                onClick={async () => {
-                  setAiLoading(true);
-                  try {
-                    const res = await fetch("/api/ai-advisor", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        lat,
-                        lon,
-                        agroZoneLabel: t.zones[agroZone],
-                        lang,
-                        priority,
-                        currentCropType,
-                        climate,
-                        trend5y,
-                        ndvi,
-                        topRotations: rotations.slice(0, 3).map((r) => ({
-                          name: r.name,
-                          scientificName: r.scientificName,
-                          matchScore: r.matchScore,
-                          reason: r.reason,
-                          pestBreakBenefit: r.pestBreakBenefit,
-                          tradeOff: r.tradeOff,
-                        })),
-                      }),
-                    });
-                    if (res.ok) {
-                      const json = (await res.json()) as AdvisorResponse;
-                      setAiPlan(json);
-                    }
-                  } finally {
-                    setAiLoading(false);
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-cyan/40 bg-cyan/15 px-3.5 py-1.5 font-mono text-xs font-semibold text-cyan transition hover:border-cyan/60 hover:bg-cyan/25 disabled:opacity-50"
-              >
-                {aiLoading ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    {t.aiLoadingLabel}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-3.5 w-3.5" />
-                    {t.aiButtonLabel}
-                  </>
-                )}
-              </button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={isGeneratingPdf}
+                  className="inline-flex items-center gap-2 rounded-xl border border-cyan/50 bg-cyan px-4 py-2 font-mono text-xs font-semibold text-void transition hover:bg-cyan/90 shadow-sm disabled:opacity-50"
+                >
+                  {isGeneratingPdf ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-void" />
+                      <span>Generando PDF...</span>
+                    </>
+                  ) : dossierDownloaded ? (
+                    <>
+                      <CheckCheck className="h-4 w-4 text-void" />
+                      <span>¡PDF Descargado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      <span>{t.dossierDownloadPdf}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="no-print inline-flex items-center gap-1.5 rounded-xl border border-line bg-panel px-3.5 py-2 font-mono text-xs font-semibold text-ink-muted transition hover:border-line-strong hover:text-ink"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>{t.dossierPrintBtn}</span>
+                </button>
+              </div>
             </div>
 
-            {aiPlan && (
-              <div className="mt-4 space-y-3 border-t border-line/70 pt-3.5 text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-ink">
-                    {aiPlan.diagnosisSummary}
-                  </p>
-                  <span
-                    className={`rounded border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${
-                      aiPlan.source === "gemini-2.5-flash"
-                        ? "border-cyan/30 bg-cyan/10 text-cyan"
-                        : "border-line-strong bg-panel text-ink-muted"
-                    }`}
-                  >
-                    {aiPlan.source === "gemini-2.5-flash"
-                      ? t.aiSourceGemini
-                      : t.aiSourceFallback}
-                  </span>
+            {/* SYNTHESIZED EXECUTIVE DOSSIER VIEW (ON SCREEN) */}
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              {/* BLOCK 1: PARCEL & USER PROFILE */}
+              <div className="rounded-xl border border-line bg-panel p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-mono text-ink-faint">
+                    <span className="uppercase tracking-wider text-cyan font-semibold">1. Datos de la Parcela</span>
+                    <MapPin className="h-3.5 w-3.5 text-cyan" />
+                  </div>
+                  <h4 className="mt-2 text-base font-bold text-ink">
+                    {activeLabel}
+                  </h4>
+                  <div className="mt-2.5 space-y-1.5 font-mono text-xs text-ink-muted">
+                    <p><span className="text-ink-faint">Coordenadas:</span> Lat {lat.toFixed(4)}, Lon {lon.toFixed(4)}</p>
+                    <p><span className="text-ink-faint">Zona:</span> {t.zones[agroZone]}</p>
+                    <p><span className="text-ink-faint">Elevación SRTM:</span> {climate.elevationM ?? 200} m</p>
+                    <p><span className="text-ink-faint">Pendiente:</span> ~{climate.slopePct ?? (selectedPreset?.slopePct ?? 2)}%</p>
+                  </div>
                 </div>
-                <ol className="space-y-1.5 pl-0 text-ink-muted">
-                  {aiPlan.actionSteps.map((step, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <span className="font-mono text-[11px] font-semibold text-cyan">
-                        [0{idx + 1}]
-                      </span>
-                      <span className="leading-relaxed">{step}</span>
-                    </li>
-                  ))}
-                </ol>
-                <div className="rounded-xl border border-amber/30 bg-amber/5 px-3 py-2 text-[11px] leading-relaxed text-amber">
-                  <span className="font-mono font-semibold uppercase tracking-wider">
-                    {t.aiCheckLabel}:
-                  </span>{" "}
-                  {aiPlan.localCheck}
+                <div className="mt-3 border-t border-line/50 pt-2 text-xs">
+                  <span className="text-ink-faint text-[11px]">Cultivo Actual:</span>
+                  <p className="font-semibold text-ink">{t.currentCropTypes[currentCropType]}</p>
                 </div>
               </div>
-            )}
+
+              {/* BLOCK 2: SOIL WATER & MOISTURE STATUS */}
+              <div className="rounded-xl border border-line bg-panel p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-mono text-ink-faint">
+                    <span className="uppercase tracking-wider text-amber font-semibold">2. Diagnóstico del Agua</span>
+                    <Droplets className="h-3.5 w-3.5 text-amber" />
+                  </div>
+                  <h4 className="mt-2 text-base font-bold text-ink">
+                    {t.dossierWaterStatus}
+                  </h4>
+                  <div className="mt-2.5 space-y-1.5 font-mono text-xs text-ink-muted">
+                    <p><span className="text-ink-faint">Evaporación Penman (Eo):</span> <strong className="text-amber">{climate.eoMmDay ?? 4.5} mm/día</strong></p>
+                    <p><span className="text-ink-faint">Lluvia últimos 30d:</span> <strong className="text-cyan">{climate.rain30dMm ?? 0} mm</strong></p>
+                    <p><span className="text-ink-faint">Humedad Superficial (0-5cm):</span> {climate.soilMoistureM3 !== null ? Math.round(climate.soilMoistureM3 * 100) : 35}%</p>
+                    <p><span className="text-ink-faint">Vigor Vegetal (NDVI):</span> {ndvi ? ndvi.current.toFixed(2) : "Calculando..."}</p>
+                  </div>
+                </div>
+                <div className="mt-3 border-t border-line/50 pt-2 text-xs">
+                  <div className="rounded-lg border border-amber/30 bg-amber/10 px-2.5 py-1.5 text-[11px] text-amber font-medium">
+                    {((climate.rain30dMm ?? 0) - (climate.eoMmDay ?? 4.5) * 30) < -40
+                      ? "Déficit hídrico estival: el suelo pierde más agua por evaporación que la lluvia recibida."
+                      : "Balance hídrico estable para el ciclo agronómico actual."}
+                  </div>
+                </div>
+              </div>
+
+              {/* BLOCK 3: SOIL RECOMMENDATIONS & NEXT STEPS */}
+              <div className="rounded-xl border border-line bg-panel p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-mono text-ink-faint">
+                    <span className="uppercase tracking-wider text-green font-semibold">3. Recomendaciones de Suelo</span>
+                    <Sprout className="h-3.5 w-3.5 text-green" />
+                  </div>
+                  <h4 className="mt-2 text-base font-bold text-ink">
+                    {t.dossierRecommendations}
+                  </h4>
+                  <ul className="mt-2 space-y-1.5 text-xs text-ink-muted leading-relaxed">
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-green font-bold">1.</span>
+                      <span>
+                        {currentCropType === "perennial"
+                          ? "Sembrar cobertura viva (trébol/vicia) en calles para frenar evaporación."
+                          : "Rotar en la siguiente campaña con leguminosa fijadora de nitrógeno."}
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-green font-bold">2.</span>
+                      <span>
+                        {(climate.slopePct ?? 2) >= 8
+                          ? "Trazar siembras en curvas de nivel para frenar erosión por escorrentía."
+                          : "Mantener acolchado orgánico (mulch) de mínimo 30% sobre el suelo."}
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-green font-bold">3.</span>
+                      <span>
+                        Optar por riego presurizado por goteo en turnos vespertinos contra la evaporación Penman.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-3 border-t border-line/50 pt-2">
+                  <span className="text-ink-faint text-[10px] font-mono block">Top 3 Cultivos Sugeridos:</span>
+                  <div className="mt-1 flex flex-wrap gap-1 text-[11px] font-mono">
+                    {rotations.slice(0, 3).map((r) => (
+                      <span key={r.id} className="rounded bg-panel-raised px-2 py-0.5 border border-line text-ink">
+                        {r.name} ({r.matchScore}%)
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </section>
