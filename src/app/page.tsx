@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   Repeat,
-  Award,
   Globe,
   Sparkles,
   Satellite,
@@ -40,7 +39,6 @@ import {
   evaluateCropRotations,
   evaluateSingleCrop,
   CROP_CATALOG,
-  type BotanicalGroup,
   type CurrentCropType,
   type FarmerPriority,
 } from "@/lib/rotations";
@@ -201,14 +199,12 @@ export default function HomePage() {
   const [showTechDetails, setShowTechDetails] = useState<boolean>(false);
   const [showCropScience, setShowCropScience] = useState<boolean>(false);
   const [priority, setPriority] = useState<FarmerPriority>("water");
-  const [selectedCategory, setSelectedCategory] = useState<BotanicalGroup | "all">("all");
   const [checkedCropId, setCheckedCropId] = useState<string>("tomato");
   const [customCropQuery, setCustomCropQuery] = useState<string>("");
   const [dynamicCropLoading, setDynamicCropLoading] = useState<boolean>(false);
   const [dynamicCropResult, setDynamicCropResult] = useState<DynamicCropResponse | null>(null);
   const [dynamicCropError, setDynamicCropError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState<boolean>(false);
-  const [expandedCropCitations, setExpandedCropCitations] = useState<Record<string, boolean>>({});
   const [currentCropType, setCurrentCropType] = useState<CurrentCropType>(
     FARM_PRESETS[0].defaultCropType
   );
@@ -479,7 +475,7 @@ export default function HomePage() {
           lang,
           undefined,
           currentCropType,
-          selectedCategory
+          "all"
         )
       : [];
 
@@ -1214,38 +1210,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* CATEGORY FILTER TABS */}
-        <div className="mb-5 flex flex-wrap gap-1.5 border-b border-line pb-3">
-          {(
-            [
-              "all",
-              "horticulture",
-              "tuber",
-              "legume",
-              "cereal",
-              "oilseed",
-              "cover",
-              "pseudocereal",
-            ] as const
-          ).map((cat) => {
-            const active = selectedCategory === cat;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCategory(cat)}
-                className={`rounded-xl px-3 py-1.5 font-mono text-xs font-medium transition ${
-                  active
-                    ? "border border-cyan/50 bg-cyan/15 text-cyan shadow-sm"
-                    : "border border-transparent bg-void/50 text-ink-muted hover:border-line hover:text-ink"
-                }`}
-              >
-                {t.cropCategories[cat]}
-              </button>
-            );
-          })}
-        </div>
-
         {/* PLANT CHECKER TOOL (DYNAMIC API + CALIBRATED CATALOG) */}
         <div className="mb-6 rounded-2xl border border-cyan/40 bg-void/80 p-4 sm:p-5 shadow-lg">
           <div className="flex flex-col gap-3">
@@ -1555,165 +1519,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {loading || rotations.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-2xl border border-line bg-void/50 p-5 text-sm text-ink-muted">
-            <Loader2 className="h-4 w-4 animate-spin text-amber" />
-            {t.calculatingRot}
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {rotations.slice(0, 6).map((crop, idx) => {
-              const isBest = idx === 0;
-              const isExpanded = !!expandedCropCitations[crop.id];
-              return (
-                <div
-                  key={crop.id}
-                  className={`flex flex-col justify-between rounded-2xl border p-5 transition ${
-                    isBest
-                      ? "border-cyan/50 bg-cyan/5 shadow-md"
-                      : "border-line bg-panel hover:border-line-strong"
-                  }`}
-                >
-                  <div>
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold ${
-                          FEASIBILITY_STYLES[crop.feasibility].badge
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            FEASIBILITY_STYLES[crop.feasibility].dot
-                          }`}
-                        />
-                        {crop.feasibilityLabel}
-                      </span>
-                      <span className="font-mono text-sm font-bold text-cyan">
-                        {crop.matchScore}%
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="font-display text-lg font-bold text-ink">
-                        {crop.name}
-                      </h3>
-                      <span className="font-mono text-xs italic text-ink-faint">
-                        {crop.scientificName}
-                      </span>
-                      <p className="mt-0.5 text-xs text-ink-muted line-clamp-1">
-                        {crop.category}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 space-y-1.5 text-xs text-ink-muted">
-                      <div className="flex items-start gap-1.5">
-                        <Sprout className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green" />
-                        <span className="text-[11px] leading-snug">
-                          {crop.pestBreakBenefit}
-                        </span>
-                      </div>
-                      {crop.limitingFactor && (
-                        <div className="flex items-start gap-1.5 text-amber">
-                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber" />
-                          <span className="text-[11px] leading-snug">
-                            {crop.limitingFactor}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-3.5 space-y-2 border-t border-line/50 pt-2.5">
-                      <div>
-                        <div className="mb-1 flex justify-between text-[10px] text-ink-faint font-mono">
-                          <span>{t.waterSaving}</span>
-                          <span>{crop.waterSavingScore}%</span>
-                        </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-line">
-                          <div
-                            className="h-full rounded-full bg-cyan"
-                            style={{ width: `${crop.waterSavingScore}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="mb-1 flex justify-between text-[10px] text-ink-faint font-mono">
-                          <span>{t.soilCare}</span>
-                          <span>{crop.soilScore}%</span>
-                        </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-line">
-                          <div
-                            className="h-full rounded-full bg-green"
-                            style={{ width: `${crop.soilScore}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="mb-1 flex justify-between text-[10px] text-ink-faint font-mono">
-                          <span>{t.climateFit}</span>
-                          <span>{crop.climateFitScore}%</span>
-                        </div>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-line">
-                          <div
-                            className="h-full rounded-full bg-amber"
-                            style={{ width: `${crop.climateFitScore}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 border-t border-line/60 pt-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedCropCitations((prev) => ({
-                          ...prev,
-                          [crop.id]: !prev[crop.id],
-                        }))
-                      }
-                      className="flex w-full items-center justify-between text-[11px] font-mono text-ink-faint transition hover:text-cyan"
-                    >
-                      <span>
-                        {isExpanded
-                          ? t.citationsToggleHide
-                          : t.citationsToggleShow}
-                      </span>
-                      {isExpanded ? (
-                        <ChevronUp className="h-3 w-3 text-cyan" />
-                      ) : (
-                        <ChevronDown className="h-3 w-3 text-cyan" />
-                      )}
-                    </button>
-
-                    {isExpanded && (
-                      <div className="mt-2 space-y-1.5 border-t border-line/40 pt-2 text-[10px] font-mono leading-relaxed text-ink-faint">
-                        <p>
-                          <span className="text-ink-muted">Agua FAO-56:</span>{" "}
-                          {crop.waterRangeMm[0]}–{crop.waterRangeMm[1]} mm (Kc:{" "}
-                          {crop.kcMid})
-                        </p>
-                        <p>
-                          <span className="text-ink-muted">Temp. Óptima:</span>{" "}
-                          {crop.ecoCropTempC[1]}–{crop.ecoCropTempC[2]} °C
-                        </p>
-                        <p>
-                          <span className="text-ink-muted">Ciclo:</span>{" "}
-                          {crop.cycleDays[0]}–{crop.cycleDays[1]} días
-                        </p>
-                        <p className="pt-0.5 text-[9.5px] text-ink-faint/80 line-clamp-2">
-                          {crop.reference}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
         {!loading && climate && agroZone && rotations.length > 0 && (
           <div className="relative mt-5 overflow-hidden rounded-2xl border border-cyan/30 bg-panel-raised/60 p-4 sm:p-5">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan/40 to-transparent" />
@@ -1823,36 +1628,6 @@ export default function HomePage() {
           </div>
         )}
       </section>
-
-      <footer
-        className="animate-fade-up space-y-4 border-t border-dashed border-line pt-6"
-        style={{ animationDelay: "320ms" }}
-      >
-        <div>
-          <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-cyan">
-            {t.districtTitle}
-          </h3>
-          <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">
-            {t.districtText}
-          </p>
-          <p className="mt-2 rounded-xl border border-line bg-void/60 px-3 py-2 text-[11px] leading-relaxed text-ink-faint">
-            {t.sentinelNote}
-          </p>
-        </div>
-        <div className="border-t border-dashed border-line pt-4">
-          <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-amber">
-            {t.methodTitle}
-          </h3>
-          <ul className="mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-ink-faint">
-            {t.methodItems.map((item, idx) => (
-              <li key={idx}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <p className="border-t border-dashed border-line pt-3 text-xs font-medium text-ink-muted">
-          {t.farmerDisclaimer}
-        </p>
-      </footer>
     </main>
   );
 }
