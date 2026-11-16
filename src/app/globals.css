@@ -111,6 +111,32 @@
   }
 }
 
+/* Leaflet + Tailwind v4 safety: prevent preflight img rules from collapsing tiles */
+.leaflet-container {
+  background: #0b110e;
+}
+
+.leaflet-container img.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(8, 11, 9, 0.78) !important;
+  color: #93a79b !important;
+  font-size: 10px !important;
+  border-top-left-radius: 6px;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: #4fd1de !important;
+}
+
+.leaflet-perimeter-mode.leaflet-container,
+.leaflet-perimeter-mode.leaflet-container .leaflet-interactive {
+  cursor: crosshair !important;
+}
+
 @media print {
   body {
     background: #ffffff !important;

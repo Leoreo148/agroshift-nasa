@@ -59,6 +59,7 @@ export default function FarmMap({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const lastZoomTriggerRef = useRef<number>(zoomTrigger);
   const [satellite, setSatellite] = useState(true);
+  const [tileFallback, setTileFallback] = useState(false);
 
   const selectionModeRef = useRef(selectionMode);
   const polygonPointsRef = useRef(polygonPoints);
@@ -90,15 +91,7 @@ export default function FarmMap({
       zoomControl: true,
     });
 
-    const satLayer = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        attribution: "Esri World Imagery",
-        maxZoom: 18,
-      }
-    );
-    satLayer.addTo(map);
-    tileLayerRef.current = satLayer;
+    L.control.scale({ imperial: false, position: "bottomleft" }).addTo(map);
 
     const polyLayer = L.layerGroup().addTo(map);
     polygonLayerRef.current = polyLayer;
@@ -159,7 +152,8 @@ export default function FarmMap({
     const triggerChanged = zoomTrigger !== lastZoomTriggerRef.current;
     if (triggerChanged) {
       lastZoomTriggerRef.current = zoomTrigger;
-      const nextZoom = targetZoom !== undefined ? targetZoom : Math.max(map.getZoom(), 9);
+      const nextZoom =
+        targetZoom !== undefined ? targetZoom : Math.max(map.getZoom(), 9);
       map.flyTo([lat, lon], nextZoom, { duration: 0.9 });
       return;
     }
@@ -179,8 +173,8 @@ export default function FarmMap({
 
     if (selectionMode === "perimeter") {
       marker.setStyle({
-        opacity: polygonPoints.length >= 3 ? 0.55 : 0,
-        fillOpacity: polygonPoints.length >= 3 ? 0.15 : 0,
+        opacity: polygonPoints.length >= 3 ? 0.65 : 0,
+        fillOpacity: polygonPoints.length >= 3 ? 0.2 : 0,
         radius: 5,
       });
 
@@ -190,14 +184,14 @@ export default function FarmMap({
 
       if (latLngs.length >= 3) {
         L.polygon(latLngs, {
-          color: "#22d3ee",
+          color: "#4fd1de",
           weight: 2.5,
-          fillColor: "#22d3ee",
-          fillOpacity: 0.22,
+          fillColor: "#4fd1de",
+          fillOpacity: 0.24,
         }).addTo(polyGroup);
       } else if (latLngs.length === 2) {
         L.polyline(latLngs, {
-          color: "#22d3ee",
+          color: "#4fd1de",
           weight: 2.5,
           dashArray: "6, 6",
         }).addTo(polyGroup);
@@ -206,10 +200,10 @@ export default function FarmMap({
       polygonPoints.forEach((p, idx) => {
         L.circleMarker([p.lat, p.lon], {
           radius: idx === 0 ? 6 : 5,
-          color: idx === 0 ? "#f59e0b" : "#22d3ee",
+          color: idx === 0 ? "#f2a33d" : "#4fd1de",
           weight: 2.5,
-          fillColor: idx === 0 ? "#f59e0b" : "#0b1120",
-          fillOpacity: 0.9,
+          fillColor: idx === 0 ? "#f2a33d" : "#080b09",
+          fillOpacity: 0.95,
         }).addTo(polyGroup);
       });
     } else {
@@ -227,21 +221,38 @@ export default function FarmMap({
 
     if (tileLayerRef.current) {
       map.removeLayer(tileLayerRef.current);
+      tileLayerRef.current = null;
     }
 
-    const nextLayer = satellite
-      ? L.tileLayer(
-          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-          { attribution: "Esri World Imagery", maxZoom: 18 }
-        )
+    const useOsm = !satellite || tileFallback;
+    const nextLayer = useOsm
+      ? L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap",
+          maxNativeZoom: 19,
+          maxZoom: 19,
+        })
       : L.tileLayer(
-          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-          { attribution: "Esri World Street Map", maxZoom: 18 }
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          {
+            attribution: "Esri World Imagery",
+            maxNativeZoom: 17,
+            maxZoom: 19,
+          }
         );
+
+    let errorCount = 0;
+    if (!useOsm) {
+      nextLayer.on("tileerror", () => {
+        errorCount += 1;
+        if (errorCount >= 4) {
+          setTileFallback(true);
+        }
+      });
+    }
 
     nextLayer.addTo(map);
     tileLayerRef.current = nextLayer;
-  }, [satellite]);
+  }, [satellite, tileFallback]);
 
   const activeHint =
     selectionMode === "perimeter" ? perimeterHint : hintText;
@@ -312,7 +323,7 @@ export default function FarmMap({
         <div
           ref={containerRef}
           className={`h-full w-full z-0 ${
-            selectionMode === "perimeter" ? "cursor-crosshair" : ""
+            selectionMode === "perimeter" ? "leaflet-perimeter-mode" : ""
           }`}
         />
 
@@ -329,17 +340,18 @@ export default function FarmMap({
 
         <button
           type="button"
-          onClick={() => setSatellite((s) => !s)}
+          onClick={() => {
+            setTileFallback(false);
+            setSatellite((s) => !s);
+          }}
           className="absolute right-3 top-3 z-[500] inline-flex items-center gap-1.5 rounded-lg border border-line bg-void/85 px-2.5 py-1.5 text-xs font-medium text-ink-muted backdrop-blur transition hover:-translate-y-0.5 hover:border-amber/60 hover:text-ink"
         >
           <Layers className="h-3.5 w-3.5 text-amber" />
           {satellite ? satelliteLabel : mapLabel}
         </button>
-
-        <div className="pointer-events-none absolute bottom-3 left-3 z-[500] max-w-[85%] rounded-lg border border-line bg-void/85 px-2.5 py-1 font-mono text-[11px] text-ink-muted backdrop-blur">
-          {activeHint}
-        </div>
       </div>
+
+      <p className="font-mono text-[11px] text-ink-faint">{activeHint}</p>
     </div>
   );
 }
