@@ -3,6 +3,7 @@ import type { ClimateMetrics, Trend5ySummary } from "@/lib/diagnostics";
 import type { Lang } from "@/lib/i18n";
 import type { CurrentCropType, FarmerPriority } from "@/lib/rotations";
 import type { NdviTrend } from "@/lib/providers/modisNdvi";
+import type { PolygonMetrics } from "@/lib/geo";
 
 export interface DossierData {
   parcelName: string;
@@ -11,6 +12,7 @@ export interface DossierData {
   agroZoneLabel: string;
   elevationM: number;
   slopePct: number;
+  polygonMetrics: PolygonMetrics | null;
   currentCropType: CurrentCropType;
   currentCropLabel: string;
   climate: ClimateMetrics;
@@ -97,7 +99,7 @@ export function generateParcelPdf(data: DossierData): jsPDF {
   let curY = 32;
 
   // 2. BLOQUE 1: DATOS CLAROS DE TU PARCELA
-  const b1H = 29;
+  const b1H = data.polygonMetrics ? 36 : 29;
   doc.setFillColor(248, 250, 252);
   doc.setDrawColor(cCardBorder[0], cCardBorder[1], cCardBorder[2]);
   doc.roundedRect(margin, curY, contentWidth, b1H, 2, 2, "FD");
@@ -162,6 +164,19 @@ export function generateParcelPdf(data: DossierData): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
   doc.text(`${data.elevationM} metros`, col2X + 32, curY + 26);
+
+  if (data.polygonMetrics) {
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+    doc.text("Área medida en el mapa:", col1X, curY + 32);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+    doc.text(
+      `${data.polygonMetrics.areaHa.toFixed(2)} hectáreas · Perímetro ${Math.round(data.polygonMetrics.perimeterM)} m`,
+      col1X + 38,
+      curY + 32
+    );
+  }
 
   curY += b1H + 4;
 

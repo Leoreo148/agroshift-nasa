@@ -566,6 +566,7 @@ export default function HomePage() {
         agroZoneLabel: t.zones[agroZone],
         elevationM: climate.elevationM ?? 200,
         slopePct: climate.slopePct ?? 2,
+        polygonMetrics,
         currentCropType,
         currentCropLabel: t.currentCropTypes[currentCropType],
         climate,
