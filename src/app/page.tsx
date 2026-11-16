@@ -31,7 +31,8 @@ import {
 } from "lucide-react";
 import type { GeoResult } from "@/app/api/geocode/route";
 import type { DynamicCropResponse } from "@/app/api/crops/evaluate/route";
-import { generateParcelPdf, type DossierData } from "@/lib/pdfGenerator";
+import type { DossierData } from "@/lib/pdfGenerator";
+import { exportDossierPdf } from "@/lib/dossierExport";
 import { FARM_PRESETS, type FarmPreset } from "@/data/farms";
 
 import {
@@ -554,7 +555,7 @@ export default function HomePage() {
 
   const activeProblem = t.problemByCrop[currentCropType];
 
-  function handleDownloadPdf() {
+  async function handleDownloadPdf() {
     if (!climate || !agroZone) return;
     setIsGeneratingPdf(true);
 
@@ -586,7 +587,7 @@ export default function HomePage() {
         lang,
       };
 
-      const doc = generateParcelPdf(dossierData);
+      const doc = await exportDossierPdf(dossierData);
       const cleanName = activeLabel.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 24);
       doc.save(`AgroShift_Ficha_Parcela_${cleanName}.pdf`);
       setDossierDownloaded(true);
