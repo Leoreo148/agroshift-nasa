@@ -4,6 +4,7 @@ import type { Lang } from "@/lib/i18n";
 import type { CurrentCropType, FarmerPriority } from "@/lib/rotations";
 import type { NdviTrend } from "@/lib/providers/modisNdvi";
 import type { PolygonMetrics } from "@/lib/geo";
+import type { AdvisorResponse } from "@/app/api/ai-advisor/route";
 
 export interface DossierData {
   parcelName: string;
@@ -27,6 +28,7 @@ export interface DossierData {
     waterDemand: string;
     nitrogenFixation: string;
   }>;
+  aiPlan: AdvisorResponse | null;
   lang: Lang;
 }
 
@@ -122,11 +124,13 @@ export function generateParcelPdf(data: DossierData): jsPDF {
   const cAmberBright = [242, 163, 61] as const; // #F2A33D
   const cCyanBright = [79, 209, 222] as const; // #4FD1DE
   const cGreenBright = [95, 217, 138] as const; // #5FD98A
+  const cIndigoBright = [99, 102, 241] as const; // same indigo as the web's AI-advisor accent
 
   const cAmber = [143, 85, 10] as const; // print-safe amber
   const cCyan = [24, 119, 129] as const; // print-safe cyan
   const cGreen = [29, 124, 63] as const; // print-safe green
   const cRose = [153, 0, 0] as const; // print-safe rose
+  const cIndigo = [13, 15, 140] as const; // print-safe indigo — AI-generated content, not a data category
 
   // 1. ENCABEZADO
   box(doc, 0, 0, pageWidth, 26, cPanel, cPanel, "F", 0);
@@ -469,20 +473,101 @@ export function generateParcelPdf(data: DossierData): jsPDF {
     doc.text(wrappedT, margin + 10.5, lineY);
   });
 
-  // 6. PIE DE PÁGINA
-  const footY = pageHeight - 12;
-  doc.setDrawColor(cCardBorder[0], cCardBorder[1], cCardBorder[2]);
-  doc.line(margin, footY - 2, pageWidth - margin, footY - 2);
+  function drawFooter() {
+    const footY = pageHeight - 12;
+    doc.setDrawColor(cCardBorder[0], cCardBorder[1], cCardBorder[2]);
+    doc.line(margin, footY - 2, pageWidth - margin, footY - 2);
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text("AgroShift NASA · Herramienta de Ayuda para el Agricultor", margin, footY + 2);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+    doc.text("AgroShift NASA · Herramienta de Ayuda para el Agricultor", margin, footY + 2);
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
-  doc.text("Datos satelitales NASA POWER, Copernicus DEM y estándares FAO · Recomendamos confirmar siempre con un técnico local en campo.", margin, footY + 5.5);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+    doc.text("Datos satelitales NASA POWER, Copernicus DEM y estándares FAO · Recomendamos confirmar siempre con un técnico local en campo.", margin, footY + 5.5);
+  }
+
+  // 6. BLOQUE 5 (PÁGINA 2): PLAN DE ACCIÓN DEL ASESOR IA
+  // Page 1 is already full by block 4 (ends ~7mm above the footer) — an AI
+  // plan of unknown length (Gemini output varies) needs its own page rather
+  // than risking an overflow/overlap on page 1.
+  if (data.aiPlan) {
+    drawFooter();
+    doc.addPage();
+
+    const ai = data.aiPlan;
+    const bodyX = margin + 6;
+    const bodyW = contentWidth - 12;
+    let aiY = 24;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+    doc.text("AGROSHIFT NASA · GUÍA PRÁCTICA DE TU PARCELA (continuación)", margin, 14);
+    doc.setDrawColor(cCardBorder[0], cCardBorder[1], cCardBorder[2]);
+    doc.line(margin, 17, pageWidth - margin, 17);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    const summaryLines: string[] = doc.splitTextToSize(cleanText(ai.diagnosisSummary), bodyW);
+
+    doc.setFontSize(7.5);
+    const stepWrapped: string[][] = ai.actionSteps.map((s) =>
+      doc.splitTextToSize(cleanText(s), bodyW - 7)
+    );
+
+    doc.setFontSize(7.5);
+    const checkLines: string[] = doc.splitTextToSize(cleanText(ai.localCheck), bodyW - 4);
+
+    const headerH = 11;
+    const summaryH = summaryLines.length * 4 + 4;
+    const stepsH = stepWrapped.reduce((acc, lines) => acc + lines.length * 4.2 + 2, 0) + 2;
+    const checkH = checkLines.length * 4 + 10;
+    const b5H = headerH + summaryH + stepsH + checkH + 6;
+
+    box(doc, margin, aiY, contentWidth, b5H, [228, 228, 252], cCardBorder, "FD", 2);
+    stripe(doc, margin, aiY, 3, b5H, cIndigoBright);
+    sectionHeader(doc, margin + 6, aiY, "05", "ASESOR IA: PLAN DE ACCIÓN PARA TU PARCELA", cIndigo);
+
+    const sourceLabel =
+      ai.source === "gemini-2.5-flash" ? "[ GEMINI 2.5 FLASH ]" : "[ MOTOR DETERMINISTA FAO ]";
+    doc.setFont("courier", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(cIndigo[0], cIndigo[1], cIndigo[2]);
+    doc.text(sourceLabel, contentWidth + margin - 4 - doc.getTextWidth(sourceLabel), aiY + 6);
+
+    aiY += headerH;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+    doc.text(summaryLines, bodyX, aiY);
+    aiY += summaryH;
+
+    doc.setFontSize(7.5);
+    ai.actionSteps.forEach((_, idx) => {
+      const lines = stepWrapped[idx];
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(cIndigo[0], cIndigo[1], cIndigo[2]);
+      doc.text(`${idx + 1}.`, bodyX, aiY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(cMuted[0], cMuted[1], cMuted[2]);
+      doc.text(lines, bodyX + 5.5, aiY);
+      aiY += lines.length * 4.2 + 2;
+    });
+    aiY += 2;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(cAmber[0], cAmber[1], cAmber[2]);
+    doc.text("Verificar en campo:", bodyX, aiY);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+    doc.text(checkLines, bodyX, aiY + 4);
+  }
+
+  drawFooter();
 
   return doc;
 }

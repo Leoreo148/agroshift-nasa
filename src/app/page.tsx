@@ -582,6 +582,7 @@ export default function HomePage() {
           nitrogenFixation:
             r.bnfKgNHa[1] > 0 ? `+${r.bnfKgNHa[0]}–${r.bnfKgNHa[1]} kg N/ha` : "0 kg N",
         })),
+        aiPlan,
         lang,
       };
 
