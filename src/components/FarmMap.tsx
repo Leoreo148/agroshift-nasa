@@ -68,6 +68,11 @@ export default function FarmMap({
 
   useEffect(() => {
     selectionModeRef.current = selectionMode;
+    // Leaflet adds its own classes (leaflet-container, etc.) to this node once
+    // at init time. Toggling it via React's className prop would overwrite the
+    // whole class attribute on every render and wipe those out — so this class
+    // is set imperatively instead, same as Leaflet manages its own.
+    containerRef.current?.classList.toggle("leaflet-perimeter-mode", selectionMode === "perimeter");
   }, [selectionMode]);
 
   useEffect(() => {
@@ -326,12 +331,7 @@ export default function FarmMap({
       </div>
 
       <div className="relative h-72 w-full overflow-hidden rounded-2xl border border-line bg-panel sm:h-80">
-        <div
-          ref={containerRef}
-          className={`h-full w-full z-0 ${
-            selectionMode === "perimeter" ? "leaflet-perimeter-mode" : ""
-          }`}
-        />
+        <div ref={containerRef} className="h-full w-full z-0" />
 
         {/* targeting reticle — decorative, never intercepts map clicks */}
         <div
