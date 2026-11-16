@@ -127,6 +127,12 @@ export default function FarmMap({
     });
     resizeObserver.observe(containerRef.current);
 
+    // The container's final size isn't guaranteed yet on this exact paint
+    // (this mounts right after the ssr:false loading placeholder swaps out),
+    // so Leaflet can cache a stale 0-ish size and never fetch tiles for the
+    // real viewport. Forcing a resize check next frame is the standard fix.
+    requestAnimationFrame(() => map.invalidateSize());
+
     mapRef.current = map;
 
     return () => {

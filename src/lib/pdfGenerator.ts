@@ -69,6 +69,28 @@ function box(
   doc.roundedRect(x, y, w, h, r, r, style);
 }
 
+// Big ghost numeral + title — the same signature as the web's StepEyebrow,
+// so the PDF reads as the same product instead of a plain text report.
+function sectionHeader(doc: jsPDF, x: number, y: number, num: string, title: string, color: RGB) {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(221, 226, 230);
+  doc.text(num, x, y + 8.5);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(color[0], color[1], color[2]);
+  doc.text(title, x + 13, y + 6);
+}
+
+// jsPDF's base Helvetica has no glyph for "check mark" (U+2713) — it silently
+// falls back to an unrelated character. Draw the check as two short strokes.
+function checkIcon(doc: jsPDF, x: number, y: number, color: RGB) {
+  doc.setDrawColor(color[0], color[1], color[2]);
+  doc.setLineWidth(0.5);
+  doc.line(x, y, x + 0.9, y + 0.9);
+  doc.line(x + 0.9, y + 0.9, x + 2.4, y - 1.1);
+}
+
 function stripe(doc: jsPDF, x: number, y: number, w: number, h: number, color: RGB) {
   doc.setFillColor(color[0], color[1], color[2]);
   doc.rect(x, y, w, h, "F");
@@ -149,13 +171,9 @@ export function generateParcelPdf(data: DossierData): jsPDF {
 
   // 2. BLOQUE 1: DATOS DE TU PARCELA
   const b1H = data.polygonMetrics ? 36 : 29;
-  box(doc, margin, curY, contentWidth, b1H, [248, 250, 252], cCardBorder, "FD", 2);
+  box(doc, margin, curY, contentWidth, b1H, [236, 250, 251], cCardBorder, "FD", 2);
   stripe(doc, margin, curY, 3, b1H, cCyanBright);
-
-  doc.setTextColor(cCyan[0], cCyan[1], cCyan[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.text("1. DATOS DE TU PARCELA Y UBICACIÓN", margin + 6, curY + 6);
+  sectionHeader(doc, margin + 6, curY, "01", "DATOS DE TU PARCELA Y UBICACIÓN", cCyan);
 
   const col1X = margin + 6;
   const col2X = margin + 94;
@@ -221,13 +239,9 @@ export function generateParcelPdf(data: DossierData): jsPDF {
 
   // 3. BLOQUE 2: EL AGUA Y EL CALOR EN TU TIERRA
   const b2H = 55;
-  box(doc, margin, curY, contentWidth, b2H, [255, 255, 255], cCardBorder, "FD", 2);
+  box(doc, margin, curY, contentWidth, b2H, [254, 247, 231], cCardBorder, "FD", 2);
   stripe(doc, margin, curY, 3, b2H, cAmberBright);
-
-  doc.setTextColor(cAmber[0], cAmber[1], cAmber[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.text("2. EL AGUA Y EL CALOR EN TU TIERRA (MEDIDO POR SATÉLITES NASA)", margin + 6, curY + 6);
+  sectionHeader(doc, margin + 6, curY, "02", "EL AGUA Y EL CALOR EN TU TIERRA (SATÉLITES NASA)", cAmber);
 
   const boxW = 41;
   const boxH = 21;
@@ -312,11 +326,7 @@ export function generateParcelPdf(data: DossierData): jsPDF {
   const b3H = 34;
   box(doc, margin, curY, contentWidth, b3H, [255, 241, 242], cRose, "FD", 2);
   stripe(doc, margin, curY, 3, b3H, [255, 107, 107]);
-
-  doc.setTextColor(cRose[0], cRose[1], cRose[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.text("3. CUIDADO CON EL MONOCULTIVO: ¿QUÉ LE PASA A TU TIERRA SI REPITES SIEMPRE LO MISMO?", margin + 6, curY + 6);
+  sectionHeader(doc, margin + 6, curY, "03", "CUIDADO CON EL MONOCULTIVO", cRose);
 
   const problemSimpleMap: Record<CurrentCropType, { title: string; points: string[] }> = {
     cereal: {
@@ -372,13 +382,9 @@ export function generateParcelPdf(data: DossierData): jsPDF {
 
   // 5. BLOQUE 4: RECOMENDACIONES DE ROTACIÓN
   const b4H = 110;
-  box(doc, margin, curY, contentWidth, b4H, [255, 255, 255], cCardBorder, "FD", 2);
+  box(doc, margin, curY, contentWidth, b4H, [237, 252, 242], cCardBorder, "FD", 2);
   stripe(doc, margin, curY, 3, b4H, cGreenBright);
-
-  doc.setTextColor(cGreen[0], cGreen[1], cGreen[2]);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("4. ¿QUÉ PLANTAS TE CONVIENE SEMBRAR EN TU PRÓXIMA CAMPAÑA?", margin + 6, curY + 6);
+  sectionHeader(doc, margin + 6, curY, "04", "QUÉ TE CONVIENE SEMBRAR EN TU PRÓXIMA CAMPAÑA", cGreen);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
@@ -457,8 +463,10 @@ export function generateParcelPdf(data: DossierData): jsPDF {
   doc.setFontSize(7.5);
   doc.setTextColor(cDark[0], cDark[1], cDark[2]);
   tipsList.forEach((t, idx) => {
-    const wrappedT = doc.splitTextToSize(`✓ ${t}`, contentWidth - 14);
-    doc.text(wrappedT, margin + 6, tipsY + 5 + idx * 5.2);
+    const lineY = tipsY + 5 + idx * 5.2;
+    checkIcon(doc, margin + 6.5, lineY - 1.4, cGreen);
+    const wrappedT = doc.splitTextToSize(t, contentWidth - 18);
+    doc.text(wrappedT, margin + 10.5, lineY);
   });
 
   // 6. PIE DE PÁGINA
